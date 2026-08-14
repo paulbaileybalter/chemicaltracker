@@ -1,0 +1,8 @@
+# Copy this file to .dev.vars (gitignored) and fill in real values for local
+# `wrangler dev`. In production these same four names are set as Worker
+# Secrets in the Cloudflare dashboard instead — see README.md.
+
+SITE_PASSWORD=changeme
+SESSION_SECRET=replace-with-a-long-random-string
+JSONBIN_BIN_ID=your-jsonbin-bin-id
+JSONBIN_API_KEY=your-jsonbin-x-master-key
