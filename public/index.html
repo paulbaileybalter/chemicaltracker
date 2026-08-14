@@ -279,6 +279,34 @@
   table.hist .flag{color:var(--purple); font-weight:700;}
   .empty-hist{padding:16px 4px; font-size:12.5px; color:#9c9887; font-style:italic;}
 
+  /* ---------- Year dashboard ---------- */
+  .dash-header{padding:20px 2px 6px;}
+  .back-link{
+    display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600;
+    color:var(--purple); text-decoration:none; margin-bottom:10px;
+  }
+  .back-link svg{width:15px; height:15px;}
+  .back-link:hover{text-decoration:underline;}
+  .dash-header h2{font-family:var(--font-display); font-size:22px; margin:0 0 6px; font-weight:700;}
+  .dash-header .sub{font-size:13px; color:#7a776c; max-width:640px; line-height:1.5;}
+  .dash-legend{display:flex; flex-wrap:wrap; gap:6px; margin-top:14px;}
+  .dash-chip{
+    display:inline-flex; align-items:center; gap:6px; border:1.5px solid var(--line); background:#fff;
+    border-radius:999px; padding:4px 10px 4px 8px; font-size:11px; font-weight:600; color:var(--ink);
+    transition:.12s ease;
+  }
+  .dash-chip:hover{border-color:var(--purple);}
+  .dash-chip .sw{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+  .dash-chip.off{opacity:.4;}
+  .dash-chip.off .sw{opacity:.4;}
+  .mini-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px;}
+  .mini-card{border:1.5px solid var(--line); border-radius:11px; padding:11px 12px; display:flex; flex-direction:column; gap:6px;}
+  .mini-card .mc-top{display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .mini-card .mc-name{font-size:12px; font-weight:700; line-height:1.25;}
+  .mini-card svg{width:100%; height:34px; display:block;}
+  .mini-card .mc-bottom{display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .mini-card .mc-val{font-family:var(--font-mono); font-size:11px; color:#6b6858;}
+
   /* ---------- Legend / key ---------- */
   .legend-row{display:flex; gap:16px; flex-wrap:wrap; align-items:center;}
 
@@ -330,6 +358,10 @@
   <div class="spacer"></div>
   <div class="actions">
     <span class="pill"><span class="dot" id="syncDot"></span><span id="syncLabel">Loading…</span></span>
+    <a class="btn ghost" href="#dashboard" id="dashboardLink" title="See how all chemicals are tracking over the year">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-4 4"/></svg>
+      Year dashboard
+    </a>
     <button class="btn ghost" id="newWeekBtn" title="Archive this stocktake and start next week's">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 20v-5h5"/></svg>
       Next week
@@ -450,6 +482,46 @@
   </section>
 
 </main>
+
+<section id="dashboardView" style="display:none;">
+  <div class="dash-header">
+    <a href="#" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to stocktake
+    </a>
+    <h2>Chemical stock — year dashboard</h2>
+    <div class="sub">All chemicals plotted together, shown as a % of each one's own minimum stock level — so 100% marks the reorder threshold for every chemical, whatever its units.</div>
+  </div>
+
+  <section class="card" id="card-combined-chart">
+    <div class="bar"></div>
+    <div class="head">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#47D7AC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-4 4"/></svg>
+      <div>
+        <h2>Stock relative to min, all chemicals</h2>
+        <div class="sub">Click a chemical in the legend to hide or show its line.</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="chart-wrap"><svg id="dashSvg" viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="dash-legend" id="dashLegend"></div>
+    </div>
+  </section>
+
+  <section class="card" id="card-mini-multiples">
+    <div class="bar"></div>
+    <div class="head">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#7566A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <div>
+        <h2>Every chemical at a glance</h2>
+        <div class="sub">Recent weeks, actual stock levels.</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="mini-grid" id="miniGrid"></div>
+    </div>
+  </section>
+</section>
 
 </div>
 
@@ -758,7 +830,10 @@
     renderLastSaved();
     renderLowStockPill();
   }
-  function renderAll(){ render(); }
+  function renderAll(){
+    render();
+    if(location.hash === '#dashboard') renderDashboard();
+  }
 
   function renderStockTable(){
     var tbody = document.getElementById('stockTbody');
@@ -1048,6 +1123,176 @@
       '<div class="stat"><div class="v">'+fmtNum(chem.min)+'</div><div class="k">Min stock</div></div>';
   }
 
+  /* ---------------- Render: year dashboard ---------------- */
+
+  var dashHiddenIds = {}; // chemId -> true when hidden from the combined chart
+
+  function chemColor(index){
+    var hue = Math.round((index * 360 / ACTIVE_CHEMICALS.length) % 360);
+    return 'hsl('+hue+', 62%, 48%)';
+  }
+
+  function dashboardWeeks(){
+    var weeks = state.history.map(function(h){ return { date:h.date, counts:h.counts }; });
+    var hasCurrentCount = ACTIVE_CHEMICALS.some(function(c){
+      var v = state.current.counts[c.id];
+      return v !== null && v !== undefined && v !== "";
+    });
+    if(hasCurrentCount) weeks.push({ date: state.current.date, counts: state.current.counts });
+    return weeks.slice(-52); // roughly a year of weekly stocktakes
+  }
+
+  function renderDashboard(){
+    renderCombinedChart();
+    renderMiniGrid();
+  }
+
+  function renderCombinedChart(){
+    var svg = document.getElementById('dashSvg');
+    var legend = document.getElementById('dashLegend');
+    var weeks = dashboardWeeks();
+    var W = 900, H = 380, padL = 44, padR = 16, padT = 16, padB = 34;
+
+    // Legend is always built from the full chemical list, regardless of chart data.
+    legend.innerHTML = ACTIVE_CHEMICALS.map(function(chem, i){
+      var off = dashHiddenIds[chem.id] ? ' off' : '';
+      return '<button class="dash-chip'+off+'" data-chem="'+chem.id+'"><span class="sw" style="background:'+chemColor(i)+'"></span>'+esc(chem.name)+'</button>';
+    }).join('');
+    legend.querySelectorAll('[data-chem]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = this.getAttribute('data-chem');
+        dashHiddenIds[id] = !dashHiddenIds[id];
+        renderCombinedChart();
+      });
+    });
+
+    if(weeks.length < 2){
+      svg.innerHTML = '<text x="20" y="190" font-family="IBM Plex Mono, monospace" font-size="13" fill="#9c9887">Not enough data yet — log a couple of stocktakes to see the year view.</text>';
+      return;
+    }
+
+    function x(i){ return padL + (W-padL-padR) * (weeks.length===1 ? 0 : i/(weeks.length-1)); }
+
+    // Build normalized (% of min) series per visible chemical first, so the
+    // y-scale reflects only what's actually being shown.
+    var series = [];
+    ACTIVE_CHEMICALS.forEach(function(chem, i){
+      if(dashHiddenIds[chem.id]) return;
+      var vals = weeks.map(function(w){
+        var c = w.counts[chem.id];
+        if(c===null||c===undefined) return null;
+        return chem.min > 0 ? round2((c/chem.min)*100) : null;
+      });
+      series.push({ chem:chem, color:chemColor(i), vals:vals });
+    });
+
+    var allVals = [];
+    series.forEach(function(s){ s.vals.forEach(function(v){ if(v!==null) allVals.push(v); }); });
+    var maxVal = allVals.length ? Math.max.apply(null, allVals.concat([100])) * 1.1 : 200;
+
+    function y(v){ return H-padB - (H-padT-padB) * (v/maxVal); }
+
+    var parts = [];
+    parts.push('<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="#E7E5DE" stroke-width="1"/>');
+    // 100% reference line — the reorder threshold for every chemical on this normalized scale.
+    parts.push('<line x1="'+padL+'" y1="'+y(100)+'" x2="'+(W-padR)+'" y2="'+y(100)+'" stroke="#7566A0" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.55"/>');
+    parts.push('<text x="'+(W-padR)+'" y="'+(y(100)-5)+'" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#7566A0" text-anchor="end">100% = at min stock</text>');
+
+    series.forEach(function(s){
+      var segments = [];
+      var cur = [];
+      s.vals.forEach(function(v, i){
+        if(v===null){
+          if(cur.length>1) segments.push(cur);
+          cur = [];
+          return;
+        }
+        cur.push([i, v]);
+      });
+      if(cur.length>1) segments.push(cur);
+      segments.forEach(function(seg){
+        var d = seg.map(function(pt,i){ return (i===0?'M':'L')+x(pt[0]).toFixed(1)+','+y(pt[1]).toFixed(1); }).join(' ');
+        parts.push('<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>');
+      });
+    });
+
+    // x labels, sparse
+    var labelEvery = weeks.length > 20 ? 4 : weeks.length > 10 ? 2 : 1;
+    weeks.forEach(function(w,i){
+      if(i % labelEvery !== 0 && i !== weeks.length-1) return;
+      var d = new Date(w.date+"T00:00:00");
+      var lbl = d.toLocaleDateString('en-AU', {day:'numeric', month:'short'});
+      parts.push('<text x="'+x(i).toFixed(1)+'" y="'+(H-12)+'" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#9c9887" text-anchor="middle">'+lbl+'</text>');
+    });
+
+    // y labels
+    [0, 50, 100, 150, 200].forEach(function(v){
+      if(v > maxVal) return;
+      parts.push('<text x="'+(padL-6)+'" y="'+(y(v)+3).toFixed(1)+'" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#9c9887" text-anchor="end">'+v+'%</text>');
+    });
+
+    if(!series.length){
+      parts.push('<text x="'+padL+'" y="'+(H/2)+'" font-family="IBM Plex Mono, monospace" font-size="12" fill="#9c9887">All chemicals hidden — click a chip below to show one.</text>');
+    }
+
+    svg.innerHTML = parts.join('');
+  }
+
+  function miniSparkline(chem, weeks){
+    var W = 200, H = 34;
+    var vals = weeks.map(function(w){ return w.counts[chem.id]; }).filter(function(v){ return v!==null && v!==undefined; });
+    if(vals.length < 2) return '<svg viewBox="0 0 '+W+' '+H+'"></svg>';
+    var minV = Math.min.apply(null, vals.concat([chem.min]));
+    var maxV = Math.max.apply(null, vals.concat([chem.min]));
+    if(maxV === minV){ minV -= 1; maxV += 1; }
+    var pts = [];
+    weeks.forEach(function(w, i){
+      var v = w.counts[chem.id];
+      if(v===null||v===undefined) return;
+      var xx = weeks.length===1 ? 0 : (W-4) * (i/(weeks.length-1)) + 2;
+      var yy = H-4 - (H-8) * ((v-minV)/(maxV-minV));
+      pts.push([xx,yy]);
+    });
+    var d = pts.map(function(p,i){ return (i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ');
+    var last = pts[pts.length-1];
+    var status = statusFor(chem, vals[vals.length-1]);
+    var dotColor = status==='low' ? '#7566A0' : '#47D7AC';
+    return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
+      '<path d="'+d+'" fill="none" stroke="#B9CFC7" stroke-width="1.5"/>'+
+      '<circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="2.5" fill="'+dotColor+'"/>'+
+      '</svg>';
+  }
+
+  function renderMiniGrid(){
+    var grid = document.getElementById('miniGrid');
+    var weeks = dashboardWeeks().slice(-12);
+    if(weeks.length < 2){
+      grid.innerHTML = '<div class="empty-hist">Not enough data yet.</div>';
+      return;
+    }
+    grid.innerHTML = ACTIVE_CHEMICALS.map(function(chem){
+      var vals = weeks.map(function(w){ return w.counts[chem.id]; }).filter(function(v){ return v!==null && v!==undefined; });
+      var latest = vals.length ? vals[vals.length-1] : null;
+      var status = statusFor(chem, latest);
+      return '<div class="mini-card">'+
+        '<div class="mc-top"><span class="mc-name">'+esc(chem.name)+'</span><span class="status-pill '+status+'"><i></i></span></div>'+
+        miniSparkline(chem, weeks)+
+        '<div class="mc-bottom"><span class="mc-val">'+(latest===null?'—':fmtNum(latest)+' '+chem.unit)+'</span><span class="mc-val">min '+fmtNum(chem.min)+'</span></div>'+
+        '</div>';
+    }).join('');
+  }
+
+  /* ---------------- View routing (stocktake vs year dashboard) ---------------- */
+
+  function syncViewFromHash(){
+    var showDashboard = location.hash === '#dashboard';
+    document.querySelector('main').style.display = showDashboard ? 'none' : '';
+    document.getElementById('dashboardView').style.display = showDashboard ? 'block' : 'none';
+    if(showDashboard) renderDashboard();
+    window.scrollTo(0,0);
+  }
+  window.addEventListener('hashchange', syncViewFromHash);
+
   /* ---------------- Render: history ---------------- */
 
   function renderHistory(){
@@ -1177,6 +1422,7 @@
 
   render();
   initSync();
+  syncViewFromHash();
 
 })();
 </script>
