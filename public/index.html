@@ -470,7 +470,7 @@
     { id:"lactic",       name:"Lactic Acid",            code:"",                         supplier:"Sopura", description:"Food grade processing aid — brewhouse",       unit:"units",         min:15,   storage:"550L bund behind CR2" },
     { id:"topax",        name:"Topax 686",              code:"SCHUTZ 3740003",          supplier:"EcoLab", description:"Foaming chlorinated detergent sanitiser",     unit:"x 1000L IBC",  min:0.5,  storage:"1 IBC on caustic storage bund" },
     { id:"alcohol70",    name:"Alcohol 70%",            code:"Commercial 15LT 5149301", supplier:"EcoLab", description:"70% alcohol solution",                        unit:"x 15L",         min:8,    storage:"Small bund among acids" },
-    { id:"synergex1000", name:"Synergex 1000L",         code:"",                         supplier:"EcoLab", description:"5% peracetic acid",                           unit:"x 1000L IBC",  min:1,    storage:"Oxidising acids — extra-large bund, kept separate from other chemicals" },
+    { id:"synergex1000", name:"Synergex 1000L",         code:"",                         supplier:"EcoLab", description:"5% peracetic acid — tracked as % remaining in the IBC currently in use",  unit:"% full",  min:30, inputStep:1, orderUnit:"x 1000L IBC", fixedOrderQty:1, storage:"Oxidising acids — extra-large bund, kept separate from other chemicals" },
     { id:"synergex15",   name:"Synergex 15L",           code:"",                         supplier:"EcoLab", description:"PAA half strength",                           unit:"x 15L",         min:3,    storage:"" },
     { id:"boiler_tannin",name:"22309PLUS.11H",          code:"",                         supplier:"Nalco",  description:"Tannin-based boiler treatment",               unit:"units",         min:2,    storage:"Small bund among acids" },
     { id:"acid700",      name:"ACID700",                code:"",                         supplier:"Nalco",  description:"Water treatment acid",                        unit:"x 1000L IBC",  min:0.45, storage:"1 in use at DME TW, 1 in storage (acid area) — 1100L bund" },
@@ -518,27 +518,30 @@
   var SEED_DATES = ["2026-05-08","2026-05-15","2026-05-22","2026-05-29","2026-06-05","2026-06-12","2026-06-19","2026-06-26","2026-07-03","2026-07-10","2026-07-17","2026-07-24","2026-07-31","2026-08-07","2026-08-14"];
   var SEED_ORDER = ["bru_solv","stonekleen","trimeta","lactic","topax","alcohol70","synergex1000","synergex15","boiler_tannin","acid700","alks500","octave","cip_liquid","sanimaxx","envirosan","lubodrive","boiler_salt","glycol","oxypak"];
   var SEED_ROWS = [
-    [6,7,5,17,7,14,1.20,5,4,0.720,0.778,2,1,3,19,3,40,1,14],
-    [4,8,4,18,4,12,0.50,4,4,0.663,0.753,1,1,3,19,3,40,1,8],
-    [5,7,5,30,16,15,1.00,2,4,0.626,0.730,2,1,3,18,3,40,1,9],
-    [5,7,5,25,15,14,1.00,1,4,0.580,0.700,2,1,3,18,3,30,1,0],
-    [5,7,4,25,12,14,0.80,8,4,0.549,0.685,2,1,3,18,3,10,1,10],
-    [5,7,5,20,15,6, 0.80,8,4,0.503,0.664,2,2,2,17,3,61,1,9],
-    [4,7,3,12,11,16,0.70,7,4,0.429,0.622,2,1,2,17,3,40,1,9],
-    [5,6,5,14,6, 13,0.52,5,4,0.722,0.582,2,2,2,17,3,39,1,9],
-    [4,6,4,19,5, 12,0.52,4,3,0.659,0.561,2,2,1,16,3,31,1,9],
-    [3,5,4,14,3, 10,0.40,3,3,0.611,0.538,1,2,1,18,3,31,1,9],
-    [6,3,6,19,9, 11,0.80,3,3,0.480,0.590,3,1,3,16,3,35,1,8],
-    [6,3,7,19,9, 9, 1.00,3,3,0.581,0.480,2,1,3,15,3,35,1,8],
-    [5,3,5.7,23,6,8, 1.00,2,3,0.517,0.463,2,1.3,3,15,3,30,1,8],
-    [4,9,5,23,6, 9, 0.60,2,2,0.950,0.410,3,1,5,15,3,25,1,8],
-    [4,9,5,20,6, 10,0.40,2,2,0.807,0.378,3,1,4,15,3,24,1,8]
+    [6,7,5,17,7,14,100,5,4,0.720,0.778,2,1,3,19,3,40,1,14],
+    [4,8,4,18,4,12,50,4,4,0.663,0.753,1,1,3,19,3,40,1,8],
+    [5,7,5,30,16,15,100,2,4,0.626,0.730,2,1,3,18,3,40,1,9],
+    [5,7,5,25,15,14,100,1,4,0.580,0.700,2,1,3,18,3,30,1,0],
+    [5,7,4,25,12,14,80,8,4,0.549,0.685,2,1,3,18,3,10,1,10],
+    [5,7,5,20,15,6, 80,8,4,0.503,0.664,2,2,2,17,3,61,1,9],
+    [4,7,3,12,11,16,70,7,4,0.429,0.622,2,1,2,17,3,40,1,9],
+    [5,6,5,14,6, 13,52,5,4,0.722,0.582,2,2,2,17,3,39,1,9],
+    [4,6,4,19,5, 12,52,4,3,0.659,0.561,2,2,1,16,3,31,1,9],
+    [3,5,4,14,3, 10,40,3,3,0.611,0.538,1,2,1,18,3,31,1,9],
+    [6,3,6,19,9, 11,80,3,3,0.480,0.590,3,1,3,16,3,35,1,8],
+    [6,3,7,19,9, 9, 100,3,3,0.581,0.480,2,1,3,15,3,35,1,8],
+    [5,3,5.7,23,6,8, 100,2,3,0.517,0.463,2,1.3,3,15,3,30,1,8],
+    [4,9,5,23,6, 9, 60,2,2,0.950,0.410,3,1,5,15,3,25,1,8],
+    [4,9,5,20,6, 10,40,2,2,0.807,0.378,3,1,4,15,3,24,1,8]
   ];
 
   function round2(n){ return Math.round(n*100)/100; }
 
   function suggestedOrder(chem, count){
     if(count === null || count === undefined || count === "" || isNaN(count)) return null;
+    if(chem.fixedOrderQty){
+      return count < chem.min ? chem.fixedOrderQty : 0;
+    }
     return round2(Math.max(chem.min - count, 0));
   }
 
@@ -784,14 +787,17 @@
         if(chem.code) descBits.push(chem.code);
         if(chem.storage) descBits.push(chem.storage);
 
+        var stepAttr = (chem.inputStep !== undefined) ? chem.inputStep : 0.01;
+        var orderUnit = chem.orderUnit || chem.unit;
+
         tr.innerHTML =
           '<td><div class="chem-name">'+esc(chem.name)+(isActive?'':' <span style="font-weight:400;font-size:10.5px;">(discontinued)</span>')+'</div>'+
           (descBits.length ? '<div class="chem-desc" title="'+esc(descBits.join(' — '))+'">'+esc(descBits[0])+'</div>' : '')+'</td>'+
           '<td>'+fmtNum(chem.min)+'</td>'+
-          '<td>'+(isActive ? '<input type="number" step="0.01" class="num-in" data-chem="'+chem.id+'" data-role="count" value="'+(count===null||count===undefined?'':count)+'"><span class="unit-lbl">'+esc(chem.unit)+'</span>' : '—')+'</td>'+
+          '<td>'+(isActive ? '<input type="number" step="'+stepAttr+'" class="num-in" data-chem="'+chem.id+'" data-role="count" value="'+(count===null||count===undefined?'':count)+'"><span class="unit-lbl">'+esc(chem.unit)+'</span>' : '—')+'</td>'+
           '<td>'+(isActive ? '<span class="status-pill '+status+'"><i></i>'+STATUS_LABEL[status]+'</span>' : '—')+'</td>'+
           '<td><span class="suggested'+(sug&&sug>0?' has':'')+'">'+(sug===null?'—':fmtNum(sug))+'</span></td>'+
-          '<td>'+(isActive ? '<input type="number" step="0.01" class="num-in order-in" data-chem="'+chem.id+'" data-role="order" value="'+(orderVal===null||orderVal===undefined?'':orderVal)+'">' : '—')+'</td>'+
+          '<td>'+(isActive ? '<input type="number" step="0.01" class="num-in order-in" data-chem="'+chem.id+'" data-role="order" value="'+(orderVal===null||orderVal===undefined?'':orderVal)+'"><span class="unit-lbl">'+esc(orderUnit)+'</span>' : '—')+'</td>'+
           '<td>'+(isActive ? '<input type="text" class="txt-in" data-chem="'+chem.id+'" data-role="note" placeholder="Reason for loss…" value="'+esc(noteVal)+'">' : '—')+'</td>';
         tbody.appendChild(tr);
       });
@@ -879,7 +885,7 @@
       var body;
       if(items.length){
         body = '<div class="po-items">'+items.map(function(it){
-          return '<div class="po-item"><span class="qty">'+fmtNum(it.qty)+' '+esc(it.chem.unit)+'</span><span class="nm">'+esc(it.chem.name)+'</span></div>';
+          return '<div class="po-item"><span class="qty">'+fmtNum(it.qty)+' '+esc(it.chem.orderUnit || it.chem.unit)+'</span><span class="nm">'+esc(it.chem.name)+'</span></div>';
         }).join('')+'</div>';
       } else {
         body = '<div class="none-needed">Nothing below min stock for '+supplier+' this week.</div>';
@@ -909,7 +915,7 @@
     lines.push('Purchase order — '+supplier);
     lines.push('Balter Brewing — week ending '+fmtDateShort(state.current.date));
     lines.push('');
-    items.forEach(function(it){ lines.push('- '+fmtNum(it.qty)+' '+it.chem.unit+' — '+it.chem.name); });
+    items.forEach(function(it){ lines.push('- '+fmtNum(it.qty)+' '+(it.chem.orderUnit || it.chem.unit)+' — '+it.chem.name); });
     lines.push('');
     lines.push(SUPPLIER_INFO[supplier].note);
     return lines.join('\n');
