@@ -8,6 +8,7 @@ A password-protected weekly chemical stocktake tool, replacing the old `Chemical
 - **Order to place** auto-fills from the suggested quantity but is fully editable per chemical — overtype it any week without breaking next week's suggestion.
 - **Purchase orders** — chemicals needing stock are grouped into one card per supplier, with that supplier's delivery cadence and order contacts (pulled from the old spreadsheet's ordering notes) and a "Copy PO" button that copies a ready-to-paste order for that supplier.
 - **Usage trends** — pick any chemical to see a chart of stock on hand over recent weeks, with a min-stock reference line, average weekly usage, and an estimated weeks-of-cover figure.
+- **Year dashboard** — click "Year dashboard" in the header to see every chemical plotted together on one chart (normalized to % of each chemical's own min stock, so 100% is the reorder line for all of them regardless of units), plus a small trend card for every chemical so you can spot outliers at a glance. It's a real link (`#dashboard`), so it's bookmarkable and the browser back button works.
 - **Stocktake history** — every past week's counts, who counted them, and how many items were below min stock.
 - **Copy order summary** / **Download PDF** — same pattern as the other sites: one button copies the whole week's orders as email-ready text, the other opens a print-formatted version of the sheet for saving as a PDF.
 
@@ -85,3 +86,11 @@ npm run dev
 ## Updating the chemical list
 
 The chemical master list (name, supplier, min stock, storage) lives near the top of the `<script>` block in `public/index.html`, in the `CHEMICALS` array. Adding a new chemical, retiring one (set `active: false` like `Cellarwash`), or changing a min stock level is a matter of editing that array and redeploying — there's no separate database for it, since the list changes rarely compared to the weekly counts.
+
+Most chemicals are tracked as a plain count against a min stock level, and the suggested order tops back up to that level. **Synergex 1000L** is different — it's tracked as a percentage remaining in the IBC currently in use, and when it's opened there's no "topping up," just a full replacement. That's handled with three extra fields on its entry:
+
+- `min: 30` — the reorder threshold is 30%, not a unit count
+- `inputStep: 1` — the stocktake field steps by whole percent rather than 0.01
+- `orderUnit: "x 1000L IBC"` and `fixedOrderQty: 1` — when below the threshold, the suggested order is a flat 1 new IBC, not "min minus on-hand"
+
+The same pattern (`fixedOrderQty` + `orderUnit`) can be reused for any other chemical that gets swapped rather than topped up.
