@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chemical Tracker — Balter Brewing</title>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#47D7AC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Chem Tracker">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#47D7AC;
+    --orange:#FDAA63;
+    --purple:#7566A0;
+    --sky:#99D6EA;
+    --ink:#0B0B0C;
+    --pale:#F1EB9C;
+    --gold:#FFD637;
+    --paper:#FFFFFF;
+    --line:#E7E5DE;
+    --wash:#FAFAF7;
+    --shadow: 0 1px 2px rgba(11,11,12,.04), 0 6px 16px rgba(11,11,12,.05);
+    --radius: 14px;
+    --font-display:'Lexend', system-ui, sans-serif;
+    --font-body:'Lexend', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(1200px 500px at 100% -10%, rgba(153,214,234,.25), transparent 60%),
+      radial-gradient(900px 400px at -10% 110%, rgba(255,214,55,.18), transparent 55%),
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+  }
+  ::selection{background:var(--teal); color:#fff;}
+  button{font-family:inherit; cursor:pointer;}
+  textarea, input, select{font-family:inherit;}
+  a{color:inherit;}
+
+  /* ---------- Bubble decoration ---------- */
+  .bubbles{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+  .bubbles span{
+    position:absolute; bottom:-40px; border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(71,215,172,.12));
+    border:1px solid rgba(71,215,172,.25);
+    animation:rise linear infinite;
+  }
+  @keyframes rise{
+    0%{transform:translateY(0) scale(1); opacity:0;}
+    10%{opacity:.6;}
+    100%{transform:translateY(-115vh) scale(1.15); opacity:0;}
+  }
+  @media (prefers-reduced-motion: reduce){ .bubbles{display:none;} }
+
+  /* ---------- Page wrapper ---------- */
+  .page{position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:0 22px 60px;}
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; row-gap:10px;
+    padding:14px 0 12px;
+    background:rgba(250,250,247,.9);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{width:40px; height:40px; flex:0 0 auto;}
+  .logo svg{width:100%; height:100%; display:block;}
+  .brand{display:flex; flex-direction:column; line-height:1.05;}
+  .brand .kicker{
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--purple); font-weight:600;
+  }
+  .brand h1{
+    font-family:var(--font-display); font-size:22px; margin:2px 0 0; font-weight:700; letter-spacing:-.01em;
+  }
+  header .spacer{flex:1;}
+  .pill{
+    display:inline-flex; align-items:center; gap:7px;
+    font-family:var(--font-mono); font-size:11.5px; font-weight:600;
+    padding:7px 12px; border-radius:999px; border:1px solid var(--line);
+    background:var(--wash); white-space:nowrap;
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:#C9C6BB; flex:0 0 auto;}
+  .dot.live{background:var(--teal); box-shadow:0 0 0 3px rgba(71,215,172,.22);}
+  .dot.local{background:var(--gold); box-shadow:0 0 0 3px rgba(255,214,55,.22);}
+  .btn{
+    display:inline-flex; align-items:center; gap:7px;
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600;
+    transition:transform .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .btn:hover{border-color:var(--purple); transform:translateY(-1px);}
+  .btn:active{transform:translateY(0);}
+  .btn:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
+    outline:2px solid var(--purple); outline-offset:2px;
+  }
+  .btn.primary{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .btn.primary:hover{background:var(--purple); border-color:var(--purple);}
+  .btn.ghost{background:transparent;}
+  .btn.small{padding:6px 10px; font-size:12px;}
+  .btn svg{width:15px; height:15px; flex:0 0 auto;}
+  header .actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:8px;}
+
+  /* ---------- Meta bar ---------- */
+  .metabar{
+    margin:16px 0 18px; padding:12px 18px;
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    display:flex; gap:26px; align-items:center; flex-wrap:wrap;
+    box-shadow:var(--shadow);
+  }
+  .field{display:flex; align-items:center; gap:8px;}
+  .field label{
+    font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.1em;
+    color:#7a776c; font-weight:600;
+  }
+  .field input{
+    border:none; border-bottom:1.5px solid var(--line); background:transparent;
+    padding:3px 2px; font-size:14px; font-weight:600; color:var(--ink); min-width:90px;
+  }
+  .field input:focus{border-color:var(--teal); outline:none;}
+  .metabar .sep{width:1px; height:20px; background:var(--line);}
+  .metabar .spacer{flex:1;}
+
+  /* ---------- Cards / layout ---------- */
+  main{display:flex; flex-direction:column; gap:16px; margin-bottom:40px;}
+  .row{display:grid; gap:16px;}
+  .row.two{grid-template-columns: 1.3fr 1fr;}
+  .row.three{grid-template-columns: repeat(3, minmax(0,1fr));}
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); display:flex; flex-direction:column;
+    overflow:hidden; position:relative;
+  }
+  .card > .bar{height:4px; flex:0 0 auto;}
+  .card .head{
+    display:flex; align-items:center; gap:8px; padding:14px 18px 10px; flex:0 0 auto; flex-wrap:wrap; row-gap:8px;
+  }
+  .card .head h2{
+    font-family:var(--font-display); font-size:15px; font-weight:700; margin:0;
+    letter-spacing:.01em;
+  }
+  .card .head .sub{font-size:12px; color:#8b8878; margin-top:1px;}
+  .card .head .icon{width:18px; height:18px; flex:0 0 auto;}
+  .card .head .tag{
+    margin-left:auto; font-family:var(--font-mono); font-size:9.5px; color:#9c9887;
+    text-transform:uppercase; letter-spacing:.08em;
+  }
+  .card .head .head-right{
+    margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .card .body{padding:6px 18px 18px; flex:1 1 auto; display:flex; flex-direction:column; min-height:0;}
+
+  #card-stocktake .bar{background:var(--teal);}
+  #card-orders .bar{background:var(--orange);}
+  #card-trends .bar{background:var(--purple);}
+  #card-history .bar{background:var(--sky);}
+  #card-legend .bar{background:#D8CC5A;}
+
+  .supplier-chip{
+    display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:9.5px;
+    font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:3px 8px; border-radius:999px;
+    white-space:nowrap;
+  }
+  .supplier-chip.sopura{background:rgba(153,214,234,.28); color:#2c6c81;}
+  .supplier-chip.nalco{background:rgba(253,170,99,.24); color:#8a4d13;}
+  .supplier-chip.ecolab{background:rgba(117,102,160,.16); color:var(--purple);}
+
+  /* ---------- Stocktake table ---------- */
+  .table-wrap{overflow-x:auto; margin:0 -2px;}
+  table.stock{width:100%; border-collapse:collapse; min-width:920px;}
+  table.stock th{
+    text-align:left; font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase;
+    letter-spacing:.07em; color:#8b8878; font-weight:600; padding:8px 8px; border-bottom:1.5px solid var(--line);
+    white-space:nowrap;
+  }
+  table.stock td{padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  table.stock tr.group-row td{
+    padding:12px 8px 5px; border-bottom:none; font-family:var(--font-mono); font-size:10.5px;
+    font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--ink);
+  }
+  table.stock tr.group-row:first-child td{padding-top:2px;}
+  table.stock tr.chem-row:hover{background:var(--wash);}
+  table.stock tr.chem-row.discontinued{opacity:.45;}
+  .chem-name{font-weight:700; font-size:13px;}
+  .chem-desc{font-size:11px; color:#8b8878; margin-top:1px; max-width:220px;}
+  .num-in{
+    width:64px; border:1.5px solid var(--line); border-radius:7px; background:var(--wash);
+    padding:5px 6px; font-size:13px; font-weight:600; color:var(--ink); text-align:right;
+  }
+  .num-in:focus{outline:2px solid var(--teal); outline-offset:0; border-color:var(--teal); background:#fff;}
+  .num-in.order-in{background:#fff; border-color:var(--orange);}
+  .num-in.order-in:focus{outline-color:var(--orange);}
+  .txt-in{
+    width:130px; border:none; border-bottom:1.5px solid var(--line); background:transparent;
+    padding:4px 2px; font-size:12px; color:var(--ink);
+  }
+  .txt-in:focus{outline:none; border-color:var(--purple);}
+  .txt-in::placeholder{color:#b3b0a2;}
+  .unit-lbl{font-family:var(--font-mono); font-size:10px; color:#9c9887; margin-left:4px;}
+  .status-pill{
+    display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:9.5px;
+    font-weight:700; padding:4px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em;
+    white-space:nowrap;
+  }
+  .status-pill i{width:6px; height:6px; border-radius:50%; flex:0 0 auto;}
+  .status-pill.pending{background:var(--wash); color:#a9a596; border:1px solid var(--line);}
+  .status-pill.pending i{background:#C9C6BB;}
+  .status-pill.ok{background:rgba(71,215,172,.16); color:#1f7a5c;}
+  .status-pill.ok i{background:var(--teal);}
+  .status-pill.low{background:rgba(117,102,160,.16); color:var(--purple);}
+  .status-pill.low i{background:var(--purple);}
+  .suggested{font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:#6b6858;}
+  .suggested.has{color:var(--orange); font-weight:700;}
+
+  /* ---------- Purchase orders ---------- */
+  .po-groups{display:flex; flex-direction:column; gap:14px;}
+  .po-group{border:1.5px solid var(--line); border-radius:11px; overflow:hidden;}
+  .po-group.empty{opacity:.55;}
+  .po-group-head{
+    display:flex; align-items:center; gap:10px; padding:10px 13px; background:var(--wash);
+    border-bottom:1px solid var(--line); flex-wrap:wrap; row-gap:6px;
+  }
+  .po-group-head .name{font-family:var(--font-display); font-weight:700; font-size:13.5px;}
+  .po-group-head .count{font-family:var(--font-mono); font-size:10.5px; color:#8b8878;}
+  .po-group-head .spacer{flex:1;}
+  .po-items{padding:4px 13px;}
+  .po-item{
+    display:flex; align-items:baseline; gap:8px; padding:6px 0; border-bottom:1px dashed var(--line);
+    font-size:12.5px;
+  }
+  .po-item:last-child{border-bottom:none;}
+  .po-item .qty{font-family:var(--font-mono); font-weight:700; color:var(--orange); min-width:60px;}
+  .po-item .nm{font-weight:600; flex:1;}
+  .po-note{padding:9px 13px 11px; font-size:11px; color:#7a776c; line-height:1.5; border-top:1px solid var(--line); background:var(--wash);}
+  .po-note a{color:var(--purple); font-weight:600; text-decoration:none;}
+  .po-note a:hover{text-decoration:underline;}
+  .none-needed{padding:14px 13px; font-size:12px; color:#9c9887; font-style:italic;}
+
+  /* ---------- Trends ---------- */
+  .trend-controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;}
+  select.chem-select{
+    border:1.5px solid var(--line); border-radius:9px; background:var(--wash); padding:8px 10px;
+    font-size:13px; font-weight:600; color:var(--ink); min-width:200px;
+  }
+  select.chem-select:focus{outline:2px solid var(--teal); outline-offset:0; border-color:var(--teal);}
+  .trend-stats{display:flex; gap:18px; flex-wrap:wrap; margin:10px 2px 2px;}
+  .stat{display:flex; flex-direction:column; gap:2px;}
+  .stat .v{font-family:var(--font-display); font-size:19px; font-weight:700;}
+  .stat .k{font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.06em; color:#9c9887;}
+  .chart-wrap{width:100%; overflow-x:auto;}
+  .chart-wrap svg{display:block; width:100%; height:auto; min-width:520px;}
+  .chart-legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:6px;}
+  .chart-legend span{display:flex; align-items:center; gap:5px; font-size:10.5px; color:#7a776c; font-family:var(--font-mono);}
+  .chart-legend i{width:14px; height:2.5px; border-radius:2px; display:inline-block;}
+  .trend-note{font-size:11px; color:#9c9887; margin-top:8px; line-height:1.5;}
+
+  /* ---------- History ---------- */
+  table.hist{width:100%; border-collapse:collapse;}
+  table.hist th{
+    text-align:left; font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase;
+    letter-spacing:.07em; color:#8b8878; font-weight:600; padding:7px 8px; border-bottom:1.5px solid var(--line);
+  }
+  table.hist td{padding:8px 8px; border-bottom:1px solid var(--line); font-size:12.5px;}
+  table.hist tr:hover{background:var(--wash);}
+  table.hist .flag{color:var(--purple); font-weight:700;}
+  table.hist tr.hist-row{cursor:pointer;}
+  .empty-hist{padding:16px 4px; font-size:12.5px; color:#9c9887; font-style:italic;}
+
+  /* ---------- Year dashboard ---------- */
+  .dash-header{padding:20px 2px 6px;}
+  .back-link{
+    display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600;
+    color:var(--purple); text-decoration:none; margin-bottom:10px;
+  }
+  .back-link svg{width:15px; height:15px;}
+  .back-link:hover{text-decoration:underline;}
+  .dash-header h2{font-family:var(--font-display); font-size:22px; margin:0 0 6px; font-weight:700;}
+  .dash-header .sub{font-size:13px; color:#7a776c; max-width:640px; line-height:1.5;}
+  .dash-legend{display:flex; flex-wrap:wrap; gap:6px; margin-top:14px;}
+  .dash-chip{
+    display:inline-flex; align-items:center; gap:6px; border:1.5px solid var(--line); background:#fff;
+    border-radius:999px; padding:4px 10px 4px 8px; font-size:11px; font-weight:600; color:var(--ink);
+    transition:.12s ease;
+  }
+  .dash-chip:hover{border-color:var(--purple);}
+  .dash-chip .sw{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+  .dash-chip.off{opacity:.4;}
+  .dash-chip.off .sw{opacity:.4;}
+  .mini-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px;}
+  .mini-card{border:1.5px solid var(--line); border-radius:11px; padding:11px 12px; display:flex; flex-direction:column; gap:6px;}
+  .mini-card .mc-top{display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .mini-card .mc-name{font-size:12px; font-weight:700; line-height:1.25;}
+  .mini-card svg{width:100%; height:34px; display:block;}
+  .mini-card .mc-bottom{display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .mini-card .mc-val{font-family:var(--font-mono); font-size:11px; color:#6b6858;}
+
+  /* ---------- History edit modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:100; background:rgba(11,11,12,.45);
+    display:flex; align-items:flex-start; justify-content:center; padding:5vh 16px; overflow-y:auto;
+  }
+  .modal-card{
+    width:100%; max-width:820px; background:#fff; border-radius:14px; box-shadow:0 20px 60px rgba(11,11,12,.3);
+    display:flex; flex-direction:column; max-height:90vh;
+  }
+  .modal-head{display:flex; align-items:flex-start; gap:10px; padding:18px 20px 4px;}
+  .modal-head h2{font-family:var(--font-display); font-size:17px; font-weight:700; margin:0;}
+  .modal-head .sub{font-family:var(--font-mono); font-size:11.5px; color:#8b8878; margin-top:2px;}
+  .modal-head button{margin-left:auto;}
+  .modal-sub-note{padding:6px 20px 12px; font-size:12px; color:#7a776c; line-height:1.5;}
+  .modal-body{padding:0 20px; overflow-y:auto; flex:1 1 auto;}
+  .modal-foot{
+    display:flex; justify-content:flex-end; gap:10px; padding:14px 20px 20px; border-top:1px solid var(--line); margin-top:8px;
+  }
+
+  /* ---------- Legend / key ---------- */
+  .legend-row{display:flex; gap:16px; flex-wrap:wrap; align-items:center;}
+
+  @media (max-width: 980px){
+    .row.two, .row.three{grid-template-columns:1fr;}
+  }
+  @media (max-width: 640px){
+    header{padding:12px 0 10px;}
+    header .actions{margin-left:0; width:100%;}
+    .metabar{gap:16px;}
+  }
+
+  /* ---------- Print / PDF sheet ---------- */
+  .print-sheet{display:none;}
+  @media print{
+    @page{ margin:14mm; }
+    body{height:auto; overflow:visible; background:#fff;}
+    .bubbles, .page{display:none !important;}
+    .print-sheet{display:block !important;}
+    .print-sheet h1{font-family:var(--font-display); font-size:20px; margin:0 0 2px; font-weight:700;}
+    .print-sheet .ps-meta{
+      font-family:var(--font-mono); font-size:10.5px; color:#333; margin-bottom:14px;
+      display:flex; gap:18px; flex-wrap:wrap;
+    }
+    .print-sheet section{margin-bottom:14px; page-break-inside:avoid;}
+    .print-sheet h3{
+      font-family:var(--font-display); font-size:12.5px; font-weight:700; margin:0 0 6px;
+      padding-bottom:3px; border-bottom:2px solid #000; text-transform:uppercase; letter-spacing:.03em;
+    }
+    .print-sheet table{width:100%; border-collapse:collapse; font-size:10.5px;}
+    .print-sheet th{text-align:left; padding:3px 6px; border-bottom:1px solid #999; font-size:9px; text-transform:uppercase;}
+    .print-sheet td{padding:3px 6px; border-bottom:1px solid #eee;}
+    .print-sheet .ps-footer{margin-top:16px; font-family:var(--font-mono); font-size:9.5px; color:#777;}
+  }
+</style>
+</head>
+<body>
+
+<div class="bubbles" id="bubbles" aria-hidden="true"></div>
+
+<div class="page">
+
+<header>
+  <div class="logo" id="logoSlot"></div>
+  <div class="brand">
+    <span class="kicker">Balter Brewing</span>
+    <h1>Chemical Tracker</h1>
+  </div>
+  <div class="spacer"></div>
+  <div class="actions">
+    <span class="pill"><span class="dot" id="syncDot"></span><span id="syncLabel">Loading…</span></span>
+    <a class="btn ghost" href="#dashboard" id="dashboardLink" title="See how all chemicals are tracking over the year">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-4 4"/></svg>
+      Year dashboard
+    </a>
+    <button class="btn ghost" id="newWeekBtn" title="Archive this stocktake and start next week's">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 20v-5h5"/></svg>
+      Next week
+    </button>
+    <button class="btn ghost" id="pdfBtn" title="Download as PDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+      Download PDF
+    </button>
+    <button class="btn primary" id="exportBtn" title="Copy the full order summary to paste into an email">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      <span id="exportBtnLabel">Copy order summary</span>
+    </button>
+    <form method="POST" action="/logout" style="margin:0; display:contents;">
+      <button type="submit" class="btn ghost" title="Sign out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Log out
+      </button>
+    </form>
+  </div>
+</header>
+
+<div class="metabar">
+  <div class="field"><label>Week ending (Fri)</label><input id="f-date" type="date"></div>
+  <div class="sep"></div>
+  <div class="field"><label>Counted by</label><input id="f-countedby" placeholder="Name"></div>
+  <div class="spacer"></div>
+  <span class="pill" id="lowStockPill"><span class="dot"></span><span>—</span></span>
+</div>
+
+<main>
+
+  <section class="card" id="card-stocktake">
+    <div class="bar"></div>
+    <div class="head">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#47D7AC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5L4.7 18a1.8 1.8 0 0 0 1.5 2.8h11.6a1.8 1.8 0 0 0 1.5-2.8L14 9.5V3"/><path d="M7.5 15h9"/></svg>
+      <div>
+        <h2>Friday stocktake</h2>
+        <div class="sub">Enter stock on hand for each chemical — the order column fills in automatically.</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="table-wrap">
+        <table class="stock" id="stockTable">
+          <thead>
+            <tr>
+              <th>Chemical</th>
+              <th>Min</th>
+              <th>On hand</th>
+              <th>Status</th>
+              <th>Suggested</th>
+              <th>Order to place</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="stockTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="row two">
+    <section class="card" id="card-orders">
+      <div class="bar"></div>
+      <div class="head">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#FDAA63" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="15" height="13" rx="2"/><path d="M16 11h4l2 3v3a1 1 0 0 1-1 1h-2"/><circle cx="7.5" cy="20.5" r="1.5"/><circle cx="17.5" cy="20.5" r="1.5"/></svg>
+        <div>
+          <h2>Purchase orders to raise</h2>
+          <div class="sub">Grouped by supplier — delivery for orders raised today lands the following Friday.</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="po-groups" id="poGroups"></div>
+      </div>
+    </section>
+
+    <section class="card" id="card-trends">
+      <div class="bar"></div>
+      <div class="head">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#7566A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-4 4"/></svg>
+        <div>
+          <h2>Usage trends</h2>
+          <div class="sub">Stock on hand over time, by chemical.</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="trend-controls">
+          <select class="chem-select" id="chemSelect"></select>
+        </div>
+        <div class="chart-wrap"><svg id="trendSvg" viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg"></svg></div>
+        <div class="chart-legend">
+          <span><i style="background:#47D7AC"></i>Stock on hand</span>
+          <span><i style="background:#7566A0; opacity:.6"></i>Min stock</span>
+        </div>
+        <div class="trend-stats" id="trendStats"></div>
+        <div class="trend-note">Usage estimates account for orders logged through this tracker. Weeks imported from the old spreadsheet (before this site existed) don't have order quantities recorded, so early usage figures are approximate.</div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" id="card-history">
+    <div class="bar"></div>
+    <div class="head">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#5AA9C2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.13-7.36L3 8"/><path d="M12 7v5l4 2"/></svg>
+      <div>
+        <h2>Stocktake history</h2>
+        <div class="sub">Most recent first.</div>
+      </div>
+      <div class="head-right"><span class="pill" id="lastSaved">—</span></div>
+    </div>
+    <div class="body">
+      <div class="table-wrap">
+        <table class="hist" id="histTable">
+          <thead><tr><th>Week ending</th><th>Counted by</th><th>Below min</th><th>Units ordered</th></tr></thead>
+          <tbody id="histTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<section id="dashboardView" style="display:none;">
+  <div class="dash-header">
+    <a href="#" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to stocktake
+    </a>
+    <h2>Chemical stock — year dashboard</h2>
+    <div class="sub">All chemicals plotted together, shown as a % of each one's own minimum stock level — so 100% marks the reorder threshold for every chemical, whatever its units.</div>
+  </div>
+
+  <section class="card" id="card-combined-chart">
+    <div class="bar"></div>
+    <div class="head">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#47D7AC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-4 4"/></svg>
+      <div>
+        <h2>Stock relative to min, all chemicals</h2>
+        <div class="sub">Click a chemical in the legend to hide or show its line.</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="chart-wrap"><svg id="dashSvg" viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="dash-legend" id="dashLegend"></div>
+    </div>
+  </section>
+
+  <section class="card" id="card-mini-multiples">
+    <div class="bar"></div>
+    <div class="head">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#7566A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <div>
+        <h2>Every chemical at a glance</h2>
+        <div class="sub">Recent weeks, actual stock levels.</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="mini-grid" id="miniGrid"></div>
+    </div>
+  </section>
+</section>
+
+</div>
+
+<div class="modal-overlay" id="histEditOverlay" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h2>Editing stocktake</h2>
+        <div class="sub" id="histEditDateLabel">—</div>
+      </div>
+      <button class="btn ghost small" id="histEditClose" title="Close without saving">✕</button>
+    </div>
+    <div class="modal-sub-note">Changes here update this past week's record directly — handy if an order changes after the fact. This doesn't affect the current stocktake.</div>
+    <div class="modal-body">
+      <div class="table-wrap">
+        <table class="stock" id="histEditTable">
+          <thead>
+            <tr>
+              <th>Chemical</th>
+              <th>Min</th>
+              <th>On hand</th>
+              <th>Status</th>
+              <th>Order placed</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="histEditTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="histEditCancel">Cancel</button>
+      <button class="btn primary" id="histEditSave">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="print-sheet" id="printSheet" aria-hidden="true"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     Reference data — chemical master list, supplier ordering info
+     ============================================================ */
+
+  var CHEMICALS = [
+    { id:"bru_solv",     name:"Bru-Solv 1000LT",        code:"SCHUTZ 21378",            supplier:"EcoLab", description:"Bulk caustic detergent",                      unit:"x 1000L IBC",  min:6,    storage:"1 on M/D tank, 1 on 1100L bund, 2 on caustic racking over permanent bund" },
+    { id:"stonekleen",   name:"Super StoneKleen",       code:"",                         supplier:"EcoLab", description:"High nitric acid CIP detergent",              unit:"x 15L",  min:6,    storage:"Shared 550L bund" },
+    { id:"trimeta",      name:"Trimeta PSF 1000L",      code:"",                         supplier:"EcoLab", description:"Nitric / phosphoric acid detergent",          unit:"x 1000L IBC",  min:5,    storage:"" },
+    { id:"lactic",       name:"Lactic Acid",            code:"",                         supplier:"Sopura", description:"Food grade processing aid — brewhouse",       unit:"units",         min:15,   storage:"550L bund behind CR2" },
+    { id:"topax",        name:"Topax 686",              code:"SCHUTZ 3740003",          supplier:"EcoLab", description:"Foaming chlorinated detergent sanitiser",     unit:"x 1000L IBC",  min:0.5,  storage:"1 IBC on caustic storage bund" },
+    { id:"alcohol70",    name:"Alcohol 70%",            code:"Commercial 15LT 5149301", supplier:"EcoLab", description:"70% alcohol solution",                        unit:"x 15L",         min:8,    storage:"Small bund among acids" },
+    { id:"synergex1000", name:"Synergex 1000L",         code:"",                         supplier:"EcoLab", description:"5% peracetic acid — tracked as % remaining in the IBC currently in use",  unit:"% full",  min:30, inputStep:1, orderUnit:"x 1000L IBC", fixedOrderQty:1, storage:"Oxidising acids — extra-large bund, kept separate from other chemicals" },
+    { id:"synergex15",   name:"Synergex 15L",           code:"",                         supplier:"EcoLab", description:"PAA half strength",                           unit:"x 15L",         min:3,    storage:"" },
+    { id:"boiler_tannin",name:"22309PLUS.11H",          code:"",                         supplier:"Nalco",  description:"Tannin-based boiler treatment",               unit:"units",         min:2,    storage:"Small bund among acids" },
+    { id:"acid700",      name:"ACID700",                code:"",                         supplier:"Nalco",  description:"Water treatment acid",                        unit:"x 1000L IBC",  min:0.45, storage:"1 in use at DME TW, 1 in storage (acid area) — 1100L bund" },
+    { id:"alks500",      name:"ALKS500",                code:"",                         supplier:"Nalco",  description:"Water treatment caustic",                     unit:"x 1000L IBC",  min:0.30, storage:"1 in use at DME TW, 1 in storage (caustic racking) — 1100L bund" },
+    { id:"octave",       name:"Octave FS",              code:"",                         supplier:"EcoLab", description:"Foaming acid for external tank cleaning",     unit:"x 25L",         min:2,    storage:"Small bund among acids" },
+    { id:"cip_liquid",   name:"Liquid CIP Cleaner",     code:"",                         supplier:"EcoLab", description:"Caustic for keg washing (CO2 suitable)",      unit:"x 200L drum",  min:1,    storage:"Caustic racking" },
+    { id:"sanimaxx",     name:"SaniMaxx",               code:"",                         supplier:"EcoLab", description:"Detergent for the canning line belts",        unit:"x 15L",         min:1,    storage:"Small bund among acids" },
+    { id:"envirosan",    name:"EnviroSan",              code:"",                         supplier:"EcoLab", description:"Sani bath sanitising detergent",              unit:"x 25L",         min:2,    storage:"Small bund among acids" },
+    { id:"lubodrive",    name:"LuboDrive",              code:"",                         supplier:"EcoLab", description:"Keg line conveyor lube",                      unit:"units",         min:1,    storage:"Small bund among acids" },
+    { id:"boiler_salt",  name:"Boiler Salt",            code:"",                         supplier:"Nalco",  description:"Water softener for boiler",                   unit:"bags",          min:10,   storage:"~1 year supply, grain warehouse" },
+    { id:"glycol",       name:"Pur-Spec 6595 (Glycol)", code:"",                         supplier:"Sopura", description:"Glycol for chillers",                         unit:"x 200L",        min:1,    storage:"Food grade — no bund needed, can warehouse" },
+    { id:"oxypak",       name:"Oxypak S",               code:"",                         supplier:"EcoLab", description:"",                                            unit:"units",         min:6,    storage:"" },
+    { id:"cellarwash",   name:"Cellarwash",             code:"",                         supplier:"EcoLab", description:"Acid for keg washing (CO2 suitable) — discontinued", unit:"x 1000L IBC", min:1, storage:"1 on M/D tank, 2 on 1100L bunds", active:false }
+  ];
+
+  var SUPPLIER_ORDER = ["EcoLab","Nalco","Sopura"];
+  var SUPPLIER_INFO = {
+    Sopura: {
+      contacts: ["aus-sales@kersia-group.com","john.navarrete@kersia-group.com"],
+      note: "Delivery Tuesdays and Fridays only. Order by Thursday AM for Tuesday delivery, or by Tuesday for Friday delivery."
+    },
+    Nalco: {
+      contacts: ["ordersaus@nalco.com","rebecca.edwards@ecolab.com"],
+      note: "Order Friday for delivery the following Friday. Include Camo and Joao. Escalation only: roy.challenger@ecolab.com."
+    },
+    EcoLab: {
+      contacts: ["Ecolink.Australia@ecolab.com","john.richardson1@ecolab.com"],
+      note: "Order Friday for delivery the following Friday. Escalation only: roy.challenger@ecolab.com."
+    }
+  };
+
+  function chemById(id){
+    for(var i=0;i<CHEMICALS.length;i++) if(CHEMICALS[i].id===id) return CHEMICALS[i];
+    return null;
+  }
+  var ACTIVE_CHEMICALS = CHEMICALS.filter(function(c){ return c.active !== false; });
+
+  /* ------------------------------------------------------------
+     Seed history — seeded once from the old Chemical_Tracker.xlsx
+     "Dashboard" tab (15 prior stocktakes) so trends have real data
+     on first load. Order quantities weren't recorded historically,
+     so they're estimated from current min stock and flagged as such.
+     ------------------------------------------------------------ */
+
+  var SEED_DATES = ["2026-05-08","2026-05-15","2026-05-22","2026-05-29","2026-06-05","2026-06-12","2026-06-19","2026-06-26","2026-07-03","2026-07-10","2026-07-17","2026-07-24","2026-07-31","2026-08-07","2026-08-14"];
+  var SEED_ORDER = ["bru_solv","stonekleen","trimeta","lactic","topax","alcohol70","synergex1000","synergex15","boiler_tannin","acid700","alks500","octave","cip_liquid","sanimaxx","envirosan","lubodrive","boiler_salt","glycol","oxypak"];
+  var SEED_ROWS = [
+    [6,7,5,17,7,14,100,5,4,0.720,0.778,2,1,3,19,3,40,1,14],
+    [4,8,4,18,4,12,50,4,4,0.663,0.753,1,1,3,19,3,40,1,8],
+    [5,7,5,30,16,15,100,2,4,0.626,0.730,2,1,3,18,3,40,1,9],
+    [5,7,5,25,15,14,100,1,4,0.580,0.700,2,1,3,18,3,30,1,0],
+    [5,7,4,25,12,14,80,8,4,0.549,0.685,2,1,3,18,3,10,1,10],
+    [5,7,5,20,15,6, 80,8,4,0.503,0.664,2,2,2,17,3,61,1,9],
+    [4,7,3,12,11,16,70,7,4,0.429,0.622,2,1,2,17,3,40,1,9],
+    [5,6,5,14,6, 13,52,5,4,0.722,0.582,2,2,2,17,3,39,1,9],
+    [4,6,4,19,5, 12,52,4,3,0.659,0.561,2,2,1,16,3,31,1,9],
+    [3,5,4,14,3, 10,40,3,3,0.611,0.538,1,2,1,18,3,31,1,9],
+    [6,3,6,19,9, 11,80,3,3,0.480,0.590,3,1,3,16,3,35,1,8],
+    [6,3,7,19,9, 9, 100,3,3,0.581,0.480,2,1,3,15,3,35,1,8],
+    [5,3,5.7,23,6,8, 100,2,3,0.517,0.463,2,1.3,3,15,3,30,1,8],
+    [4,9,5,23,6, 9, 60,2,2,0.950,0.410,3,1,5,15,3,25,1,8],
+    [4,9,5,20,6, 10,40,2,2,0.807,0.378,3,1,4,15,3,24,1,8]
+  ];
+
+  function round2(n){ return Math.round(n*100)/100; }
+
+  function suggestedOrder(chem, count){
+    if(count === null || count === undefined || count === "" || isNaN(count)) return null;
+    if(chem.fixedOrderQty){
+      return count < chem.min ? chem.fixedOrderQty : 0;
+    }
+    return round2(Math.max(chem.min - count, 0));
+  }
+
+  function buildSeedHistory(){
+    return SEED_DATES.map(function(date, wi){
+      var row = SEED_ROWS[wi];
+      var counts = {};
+      SEED_ORDER.forEach(function(id, ci){ counts[id] = row[ci]; });
+      var orderPlaced = {};
+      SEED_ORDER.forEach(function(id){
+        var chem = chemById(id);
+        orderPlaced[id] = chem ? suggestedOrder(chem, counts[id]) : null;
+      });
+      return { date:date, countedBy:"", counts:counts, orderPlaced:orderPlaced, notes:{}, estimatedOrders:true };
+    });
+  }
+
+  /* ------------------------------------------------------------ */
+
+  function nextFriday(dateStr){
+    var d = dateStr ? new Date(dateStr+"T00:00:00") : new Date();
+    d.setDate(d.getDate()+7);
+    return fmtDate(d);
+  }
+  function fmtDate(d){
+    var pad=function(n){return n<10?'0'+n:''+n;};
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  }
+  function todayOrNextFriday(){
+    var d = new Date();
+    var day = d.getDay(); // 0=Sun..5=Fri..6=Sat
+    var add = (5 - day + 7) % 7;
+    d.setDate(d.getDate()+add);
+    return fmtDate(d);
+  }
+  function fmtDateShort(dateStr){
+    if(!dateStr) return "—";
+    var d = new Date(dateStr+"T00:00:00");
+    return d.toLocaleDateString('en-AU', {day:'numeric', month:'short', year:'numeric'});
+  }
+
+  function emptyCurrent(date){
+    var counts={}, orderOverride={}, notes={};
+    ACTIVE_CHEMICALS.forEach(function(c){ counts[c.id]=null; orderOverride[c.id]=null; notes[c.id]=""; });
+    return { date:date, countedBy:"", counts:counts, orderOverride:orderOverride, notes:notes };
+  }
+
+  function defaultState(){
+    return {
+      history: buildSeedHistory(),
+      current: emptyCurrent(todayOrNextFriday()),
+      updatedAt: 0
+    };
+  }
+
+  var state = defaultState();
+  var dirty = false;
+  var pushTimer = null;
+  var selectedChemId = ACTIVE_CHEMICALS[0].id;
+
+  /* ---------------- Logo & bubbles ---------------- */
+  document.getElementById('logoSlot').innerHTML =
+    '<svg viewBox="0 0 161 161" xmlns="http://www.w3.org/2000/svg">'+
+    '<path fill="#47D7AC" d="M136.3,70.4l-9.4-9.4c-1.6-1.6-4.3-1.6-6,0-1.6,1.6-1.6,4.3,0,6l2.3,2.3c-9.6,13.2-25.2,21.7-42.7,21.7s-33.1-8.6-42.7-21.8l2.3-2.3c1.6-1.6,1.6-4.3,0-6-1.6-1.6-4.3-1.6-6,0l-9.4,9.4c-1.6,1.6-1.6,4.3,0,6,.8.8,1.9,1.2,3,1.2s2.2-.4,3-1.2l1.1-1.1c11.2,14.7,28.9,24.2,48.7,24.2s37.5-9.5,48.7-24.2l1.1,1.1c.8.8,1.9,1.2,3,1.2s2.2-.4,3-1.2c1.6-1.6,1.6-4.3,0-6"/>'+
+    '<path fill="#47D7AC" d="M152.5,8.5v144H8.5V8.5h144M161,0H0v161h161V0h0Z"/>'+
+    '</svg>';
+
+  var bwrap = document.getElementById('bubbles');
+  for (var bi=0; bi<10; bi++){
+    var b = document.createElement('span');
+    var size = 6 + Math.random()*16;
+    b.style.width = size+'px'; b.style.height = size+'px';
+    b.style.left = (Math.random()*100)+'%';
+    b.style.animationDuration = (14 + Math.random()*16)+'s';
+    b.style.animationDelay = (Math.random()*-20)+'s';
+    bwrap.appendChild(b);
+  }
+
+  /* ---------------- Sync ----------------
+     Multi-device sync goes through the same-origin /api/sync endpoint,
+     which the Cloudflare Worker proxies to JSONBin.io server-side — the
+     browser never sees the JSONBin Bin ID or API key. Everyone signed in
+     shares the one tracker, the same as the sibling handover sites. */
+  var CACHE_KEY = 'balter-chem-tracker-cache';
+
+  function qs(sel){ return document.querySelector(sel); }
+
+  function setSyncStatus(mode, label){
+    var dot = document.getElementById('syncDot');
+    var lbl = document.getElementById('syncLabel');
+    dot.className = 'dot' + (mode==='live' ? ' live' : mode==='local' ? ' local' : '');
+    lbl.textContent = label;
+  }
+
+  async function remoteGet(){
+    var res = await fetch('/api/sync', {method:'GET', credentials:'same-origin', cache:'no-store'});
+    if(res.status === 401){ location.href = '/login'; return null; }
+    if(!res.ok) throw new Error('sync get failed');
+    var data = await res.json();
+    return (data && typeof data === 'object' && Object.keys(data).length) ? data : null;
+  }
+
+  async function remoteSet(data){
+    var res = await fetch('/api/sync', {
+      method:'PUT', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    if(res.status === 401){ location.href = '/login'; return; }
+    if(!res.ok) throw new Error('sync set failed');
+  }
+
+  function saveLocal(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(state)); }catch(e){} }
+  function loadLocal(){
+    try{ var raw = localStorage.getItem(CACHE_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+    return null;
+  }
+
+  function reconcileState(s){
+    if(!s.history) s.history = [];
+    if(!s.current) s.current = emptyCurrent(todayOrNextFriday());
+    var c = s.current;
+    if(!c.counts) c.counts = {};
+    if(!c.orderOverride) c.orderOverride = {};
+    if(!c.notes) c.notes = {};
+    ACTIVE_CHEMICALS.forEach(function(chem){
+      if(!(chem.id in c.counts)) c.counts[chem.id] = null;
+      if(!(chem.id in c.orderOverride)) c.orderOverride[chem.id] = null;
+      if(!(chem.id in c.notes)) c.notes[chem.id] = "";
+    });
+    s.history.sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    return s;
+  }
+
+  function markDirty(){
+    dirty = true;
+    state.updatedAt = Date.now();
+    saveLocal();
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushRemote, 800);
+  }
+
+  async function pushRemote(){
+    try{ await remoteSet(state); dirty = false; setSyncStatus('live','Live — synced'); }
+    catch(e){ setSyncStatus('local','Offline — saved on this device'); }
+  }
+
+  async function pollRemote(){
+    if(dirty) return;
+    try{
+      var remote = await remoteGet();
+      if(remote && remote.updatedAt && remote.updatedAt > (state.updatedAt||0)){
+        state = reconcileState(Object.assign(defaultState(), remote));
+        saveLocal();
+        renderAll();
+      }
+      setSyncStatus('live','Live — synced');
+    }catch(e){ setSyncStatus('local','Offline — saved on this device'); }
+  }
+
+  async function initSync(){
+    var cached = loadLocal();
+    if(cached){ state = reconcileState(Object.assign(defaultState(), cached)); renderAll(); }
+
+    try{
+      var remote = await remoteGet();
+      if(remote){
+        if(!cached || (remote.updatedAt||0) >= (cached.updatedAt||0)){
+          state = Object.assign(defaultState(), remote);
+        }
+      }
+      state = reconcileState(state);
+      renderAll();
+      saveLocal();
+      setSyncStatus('live','Live — synced');
+    }catch(e){ setSyncStatus('local','Offline — saved on this device'); }
+
+    setInterval(pollRemote, 4000);
+  }
+
+  /* ---------------- Derived helpers ---------------- */
+
+  function statusFor(chem, count){
+    if(count === null || count === undefined || count === "" || isNaN(count)) return "pending";
+    if(count < chem.min) return "low";
+    return "ok";
+  }
+  var STATUS_LABEL = { pending:"Not counted", low:"Below min", ok:"OK" };
+
+  function currentOrderQty(chem){
+    var c = state.current;
+    var count = c.counts[chem.id];
+    var sug = suggestedOrder(chem, count);
+    var override = c.orderOverride[chem.id];
+    return (override !== null && override !== undefined && override !== "") ? Number(override) : sug;
+  }
+
+  function fmtNum(n){
+    if(n === null || n === undefined || isNaN(n)) return "—";
+    var r = Math.round(n*100)/100;
+    return (r % 1 === 0) ? String(r) : String(r);
+  }
+
+  /* ---------------- Render: stocktake table ---------------- */
+
+  function render(){
+    qs('#f-date').value = state.current.date || '';
+    qs('#f-countedby').value = state.current.countedBy || '';
+    renderStockTable();
+    renderPOGroups();
+    renderChemSelect();
+    renderTrend();
+    renderHistory();
+    renderLastSaved();
+    renderLowStockPill();
+  }
+  function renderAll(){
+    render();
+    if(location.hash === '#dashboard') renderDashboard();
+  }
+
+  function renderStockTable(){
+    var tbody = document.getElementById('stockTbody');
+    tbody.innerHTML = '';
+    var groups = SUPPLIER_ORDER;
+    groups.forEach(function(supplier){
+      var chems = CHEMICALS.filter(function(c){ return c.supplier === supplier; });
+      if(!chems.length) return;
+      var groupRow = document.createElement('tr');
+      groupRow.className = 'group-row';
+      groupRow.innerHTML = '<td colspan="7">'+supplier+'</td>';
+      tbody.appendChild(groupRow);
+
+      chems.forEach(function(chem){
+        var isActive = chem.active !== false;
+        var tr = document.createElement('tr');
+        tr.className = 'chem-row' + (isActive ? '' : ' discontinued');
+        var count = isActive ? state.current.counts[chem.id] : null;
+        var status = isActive ? statusFor(chem, count) : 'pending';
+        var sug = isActive ? suggestedOrder(chem, count) : null;
+        var orderVal = isActive ? currentOrderQty(chem) : null;
+        var noteVal = isActive ? (state.current.notes[chem.id] || '') : '';
+
+        var descBits = [];
+        if(chem.description) descBits.push(chem.description);
+        if(chem.code) descBits.push(chem.code);
+        if(chem.storage) descBits.push(chem.storage);
+
+        var stepAttr = (chem.inputStep !== undefined) ? chem.inputStep : 0.01;
+        var orderUnit = chem.orderUnit || chem.unit;
+
+        tr.innerHTML =
+          '<td><div class="chem-name">'+esc(chem.name)+(isActive?'':' <span style="font-weight:400;font-size:10.5px;">(discontinued)</span>')+'</div>'+
+          (descBits.length ? '<div class="chem-desc" title="'+esc(descBits.join(' — '))+'">'+esc(descBits[0])+'</div>' : '')+'</td>'+
+          '<td>'+fmtNum(chem.min)+'</td>'+
+          '<td>'+(isActive ? '<input type="number" step="'+stepAttr+'" class="num-in" data-chem="'+chem.id+'" data-role="count" value="'+(count===null||count===undefined?'':count)+'"><span class="unit-lbl">'+esc(chem.unit)+'</span>' : '—')+'</td>'+
+          '<td>'+(isActive ? '<span class="status-pill '+status+'"><i></i>'+STATUS_LABEL[status]+'</span>' : '—')+'</td>'+
+          '<td><span class="suggested'+(sug&&sug>0?' has':'')+'">'+(sug===null?'—':fmtNum(sug))+'</span></td>'+
+          '<td>'+(isActive ? '<input type="number" step="0.01" class="num-in order-in" data-chem="'+chem.id+'" data-role="order" value="'+(orderVal===null||orderVal===undefined?'':orderVal)+'"><span class="unit-lbl">'+esc(orderUnit)+'</span>' : '—')+'</td>'+
+          '<td>'+(isActive ? '<input type="text" class="txt-in" data-chem="'+chem.id+'" data-role="note" placeholder="Reason for loss…" value="'+esc(noteVal)+'">' : '—')+'</td>';
+        tbody.appendChild(tr);
+      });
+    });
+
+    tbody.querySelectorAll('input[data-role="count"]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = this.getAttribute('data-chem');
+        var v = this.value === '' ? null : Number(this.value);
+        state.current.counts[id] = v;
+        markDirty();
+        renderStockRowDerived(id);
+        renderPOGroups();
+        renderTrend();
+        renderLowStockPill();
+      });
+    });
+    tbody.querySelectorAll('input[data-role="order"]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = this.getAttribute('data-chem');
+        var v = this.value === '' ? null : Number(this.value);
+        state.current.orderOverride[id] = v;
+        markDirty();
+        renderPOGroups();
+      });
+    });
+    tbody.querySelectorAll('input[data-role="note"]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = this.getAttribute('data-chem');
+        state.current.notes[id] = this.value;
+        markDirty();
+      });
+    });
+  }
+
+  // Lightweight partial refresh for the row that just changed, so status
+  // pill / suggested value update without losing focus on other fields.
+  function renderStockRowDerived(chemId){
+    var chem = chemById(chemId);
+    var row = document.querySelector('input[data-chem="'+chemId+'"][data-role="count"]');
+    if(!row) return;
+    var tr = row.closest('tr');
+    var count = state.current.counts[chemId];
+    var status = statusFor(chem, count);
+    var sug = suggestedOrder(chem, count);
+    var pill = tr.querySelector('.status-pill');
+    if(pill){ pill.className = 'status-pill '+status; pill.innerHTML = '<i></i>'+STATUS_LABEL[status]; }
+    var sugSpan = tr.querySelector('.suggested');
+    if(sugSpan){ sugSpan.className = 'suggested'+(sug&&sug>0?' has':''); sugSpan.textContent = sug===null?'—':fmtNum(sug); }
+    // If the order field hasn't been manually overridden, keep it following the suggestion.
+    var override = state.current.orderOverride[chemId];
+    if(override === null || override === undefined || override === ''){
+      var orderInp = tr.querySelector('input[data-role="order"]');
+      if(orderInp && document.activeElement !== orderInp){
+        orderInp.value = sug===null||sug===undefined?'':sug;
+      }
+    }
+  }
+
+  /* ---------------- Render: purchase orders ---------------- */
+
+  function renderPOGroups(){
+    var wrap = document.getElementById('poGroups');
+    wrap.innerHTML = '';
+    var anyNeeded = false;
+
+    SUPPLIER_ORDER.forEach(function(supplier){
+      var chems = ACTIVE_CHEMICALS.filter(function(c){ return c.supplier === supplier; });
+      var items = [];
+      chems.forEach(function(chem){
+        var qty = currentOrderQty(chem);
+        if(qty && qty > 0){ items.push({chem:chem, qty:qty}); anyNeeded = true; }
+      });
+
+      var group = document.createElement('div');
+      group.className = 'po-group' + (items.length ? '' : ' empty');
+
+      var info = SUPPLIER_INFO[supplier];
+      var head = '<div class="po-group-head"><span class="supplier-chip '+supplier.toLowerCase()+'">'+supplier+'</span>'+
+        '<span class="name">'+items.length+' item'+(items.length===1?'':'s')+' to order</span>'+
+        '<span class="spacer"></span>'+
+        (items.length ? '<button class="btn small ghost" data-copy-supplier="'+supplier+'">Copy PO</button>' : '')+
+        '</div>';
+
+      var body;
+      if(items.length){
+        body = '<div class="po-items">'+items.map(function(it){
+          return '<div class="po-item"><span class="qty">'+fmtNum(it.qty)+' '+esc(it.chem.orderUnit || it.chem.unit)+'</span><span class="nm">'+esc(it.chem.name)+'</span></div>';
+        }).join('')+'</div>';
+      } else {
+        body = '<div class="none-needed">Nothing below min stock for '+supplier+' this week.</div>';
+      }
+
+      var note = '<div class="po-note">'+esc(info.note)+'<br>Contacts: '+
+        info.contacts.map(function(e){ return '<a href="mailto:'+e+'">'+e+'</a>'; }).join(', ')+'</div>';
+
+      group.innerHTML = head + body + note;
+      wrap.appendChild(group);
+    });
+
+    wrap.querySelectorAll('[data-copy-supplier]').forEach(function(btn){
+      btn.addEventListener('click', function(){ copyPOForSupplier(this.getAttribute('data-copy-supplier'), this); });
+    });
+  }
+
+  function poTextForSupplier(supplier){
+    var chems = ACTIVE_CHEMICALS.filter(function(c){ return c.supplier === supplier; });
+    var items = [];
+    chems.forEach(function(chem){
+      var qty = currentOrderQty(chem);
+      if(qty && qty > 0) items.push({chem:chem, qty:qty});
+    });
+    if(!items.length) return null;
+    var lines = [];
+    lines.push('Purchase order — '+supplier);
+    lines.push('Balter Brewing — week ending '+fmtDateShort(state.current.date));
+    lines.push('');
+    items.forEach(function(it){ lines.push('- '+fmtNum(it.qty)+' '+(it.chem.orderUnit || it.chem.unit)+' — '+it.chem.name); });
+    lines.push('');
+    lines.push(SUPPLIER_INFO[supplier].note);
+    return lines.join('\n');
+  }
+
+  async function copyPOForSupplier(supplier, btn){
+    var text = poTextForSupplier(supplier);
+    if(!text) return;
+    var original = btn.textContent;
+    try{
+      await navigator.clipboard.writeText(text);
+      btn.textContent = 'Copied ✓';
+    }catch(e){ btn.textContent = 'Could not copy'; }
+    setTimeout(function(){ btn.textContent = original; }, 2000);
+  }
+
+  function renderLowStockPill(){
+    var pill = document.getElementById('lowStockPill');
+    var low = 0;
+    ACTIVE_CHEMICALS.forEach(function(chem){
+      var st = statusFor(chem, state.current.counts[chem.id]);
+      if(st==='low') low++;
+    });
+    var dot = pill.querySelector('.dot');
+    var label = pill.querySelector('span:last-child');
+    if(low>0){
+      dot.style.background = 'var(--purple)';
+      label.textContent = low+' chemical'+(low===1?'':'s')+' below min stock';
+    } else {
+      dot.style.background = 'var(--teal)';
+      label.textContent = 'All chemicals at or above min stock';
+    }
+  }
+
+  /* ---------------- Render: trend chart ---------------- */
+
+  function renderChemSelect(){
+    var sel = document.getElementById('chemSelect');
+    if(sel.options.length) return; // build once
+    sel.innerHTML = ACTIVE_CHEMICALS.map(function(c){
+      return '<option value="'+c.id+'">'+esc(c.name)+' ('+c.supplier+')</option>';
+    }).join('');
+    sel.value = selectedChemId;
+    sel.addEventListener('change', function(){ selectedChemId = this.value; renderTrend(); });
+  }
+
+  function weeksForChart(){
+    // history (chronological) + current (if it has a count) appended.
+    var weeks = state.history.map(function(h){
+      return { date:h.date, count:h.counts[selectedChemId], order:h.orderPlaced ? h.orderPlaced[selectedChemId] : null, estimated: !!h.estimatedOrders };
+    });
+    var curCount = state.current.counts[selectedChemId];
+    if(curCount !== null && curCount !== undefined && curCount !== ''){
+      weeks.push({ date: state.current.date, count: curCount, order: currentOrderQty(chemById(selectedChemId)), estimated:false, isCurrent:true });
+    }
+    return weeks.slice(-14); // cap chart width
+  }
+
+  function renderTrend(){
+    var chem = chemById(selectedChemId);
+    var weeks = weeksForChart();
+    var svg = document.getElementById('trendSvg');
+    var W = 560, H = 220, padL = 34, padR = 14, padT = 14, padB = 30;
+
+    if(weeks.length < 2){
+      svg.innerHTML = '<text x="20" y="110" font-family="IBM Plex Mono, monospace" font-size="12" fill="#9c9887">Not enough data yet — log a couple of stocktakes to see a trend.</text>';
+      document.getElementById('trendStats').innerHTML = '';
+      return;
+    }
+
+    var counts = weeks.map(function(w){ return w.count===null||w.count===undefined ? 0 : w.count; });
+    var maxVal = Math.max.apply(null, counts.concat([chem.min]));
+    maxVal = maxVal <= 0 ? 1 : maxVal * 1.15;
+
+    function x(i){ return padL + (W-padL-padR) * (weeks.length===1 ? 0 : i/(weeks.length-1)); }
+    function y(v){ return H-padB - (H-padT-padB) * (v/maxVal); }
+
+    var parts = [];
+
+    // gridlines / axis
+    parts.push('<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="#E7E5DE" stroke-width="1"/>');
+
+    // min stock reference line
+    parts.push('<line x1="'+padL+'" y1="'+y(chem.min)+'" x2="'+(W-padR)+'" y2="'+y(chem.min)+'" stroke="#7566A0" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>');
+
+    // stock line
+    var pathD = weeks.map(function(w,i){ return (i===0?'M':'L')+x(i).toFixed(1)+','+y(w.count===null?0:w.count).toFixed(1); }).join(' ');
+    parts.push('<path d="'+pathD+'" fill="none" stroke="#47D7AC" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>');
+
+    // points
+    weeks.forEach(function(w,i){
+      if(w.count===null||w.count===undefined) return;
+      parts.push('<circle cx="'+x(i).toFixed(1)+'" cy="'+y(w.count).toFixed(1)+'" r="3.5" fill="#fff" stroke="#47D7AC" stroke-width="2"/>');
+    });
+
+    // x labels (sparse if many weeks)
+    var labelEvery = weeks.length > 8 ? 2 : 1;
+    weeks.forEach(function(w,i){
+      if(i % labelEvery !== 0 && i !== weeks.length-1) return;
+      var d = new Date(w.date+"T00:00:00");
+      var lbl = d.toLocaleDateString('en-AU', {day:'numeric', month:'short'});
+      parts.push('<text x="'+x(i).toFixed(1)+'" y="'+(H-10)+'" font-family="IBM Plex Mono, monospace" font-size="9" fill="#9c9887" text-anchor="middle">'+lbl+'</text>');
+    });
+
+    // y axis labels (0, min, max)
+    [0, chem.min].forEach(function(v){
+      parts.push('<text x="'+(padL-6)+'" y="'+(y(v)+3).toFixed(1)+'" font-family="IBM Plex Mono, monospace" font-size="9" fill="#9c9887" text-anchor="end">'+fmtNum(v)+'</text>');
+    });
+
+    svg.innerHTML = parts.join('');
+
+    // stats
+    var last = weeks[weeks.length-1];
+    var usageDeltas = [];
+    for(var i=1;i<weeks.length;i++){
+      var prev = weeks[i-1], cur = weeks[i];
+      if(prev.count===null||cur.count===null) continue;
+      var prevOrder = prev.order || 0;
+      var usage = (prev.count + prevOrder) - cur.count;
+      usageDeltas.push(usage);
+    }
+    var avgUsage = usageDeltas.length ? (usageDeltas.reduce(function(a,b){return a+b;},0) / usageDeltas.length) : null;
+    var weeksCover = (avgUsage && avgUsage > 0 && last.count!==null) ? (last.count / avgUsage) : null;
+
+    var stats = document.getElementById('trendStats');
+    stats.innerHTML =
+      '<div class="stat"><div class="v">'+fmtNum(last.count)+'</div><div class="k">Latest on hand</div></div>'+
+      '<div class="stat"><div class="v">'+(avgUsage===null?'—':fmtNum(avgUsage))+'</div><div class="k">Avg weekly usage</div></div>'+
+      '<div class="stat"><div class="v">'+(weeksCover===null?'—':fmtNum(weeksCover))+'</div><div class="k">Weeks of cover left</div></div>'+
+      '<div class="stat"><div class="v">'+fmtNum(chem.min)+'</div><div class="k">Min stock</div></div>';
+  }
+
+  /* ---------------- Render: year dashboard ---------------- */
+
+  var dashHiddenIds = {}; // chemId -> true when hidden from the combined chart
+
+  function chemColor(index){
+    var hue = Math.round((index * 360 / ACTIVE_CHEMICALS.length) % 360);
+    return 'hsl('+hue+', 62%, 48%)';
+  }
+
+  function dashboardWeeks(){
+    var weeks = state.history.map(function(h){ return { date:h.date, counts:h.counts }; });
+    var hasCurrentCount = ACTIVE_CHEMICALS.some(function(c){
+      var v = state.current.counts[c.id];
+      return v !== null && v !== undefined && v !== "";
+    });
+    if(hasCurrentCount) weeks.push({ date: state.current.date, counts: state.current.counts });
+    return weeks.slice(-52); // roughly a year of weekly stocktakes
+  }
+
+  function renderDashboard(){
+    renderCombinedChart();
+    renderMiniGrid();
+  }
+
+  function renderCombinedChart(){
+    var svg = document.getElementById('dashSvg');
+    var legend = document.getElementById('dashLegend');
+    var weeks = dashboardWeeks();
+    var W = 900, H = 380, padL = 44, padR = 16, padT = 16, padB = 34;
+
+    // Legend is always built from the full chemical list, regardless of chart data.
+    legend.innerHTML = ACTIVE_CHEMICALS.map(function(chem, i){
+      var off = dashHiddenIds[chem.id] ? ' off' : '';
+      return '<button class="dash-chip'+off+'" data-chem="'+chem.id+'"><span class="sw" style="background:'+chemColor(i)+'"></span>'+esc(chem.name)+'</button>';
+    }).join('');
+    legend.querySelectorAll('[data-chem]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = this.getAttribute('data-chem');
+        dashHiddenIds[id] = !dashHiddenIds[id];
+        renderCombinedChart();
+      });
+    });
+
+    if(weeks.length < 2){
+      svg.innerHTML = '<text x="20" y="190" font-family="IBM Plex Mono, monospace" font-size="13" fill="#9c9887">Not enough data yet — log a couple of stocktakes to see the year view.</text>';
+      return;
+    }
+
+    function x(i){ return padL + (W-padL-padR) * (weeks.length===1 ? 0 : i/(weeks.length-1)); }
+
+    // Build normalized (% of min) series per visible chemical first, so the
+    // y-scale reflects only what's actually being shown.
+    var series = [];
+    ACTIVE_CHEMICALS.forEach(function(chem, i){
+      if(dashHiddenIds[chem.id]) return;
+      var vals = weeks.map(function(w){
+        var c = w.counts[chem.id];
+        if(c===null||c===undefined) return null;
+        return chem.min > 0 ? round2((c/chem.min)*100) : null;
+      });
+      series.push({ chem:chem, color:chemColor(i), vals:vals });
+    });
+
+    var allVals = [];
+    series.forEach(function(s){ s.vals.forEach(function(v){ if(v!==null) allVals.push(v); }); });
+    var maxVal = allVals.length ? Math.max.apply(null, allVals.concat([100])) * 1.1 : 200;
+
+    function y(v){ return H-padB - (H-padT-padB) * (v/maxVal); }
+
+    var parts = [];
+    parts.push('<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="#E7E5DE" stroke-width="1"/>');
+    // 100% reference line — the reorder threshold for every chemical on this normalized scale.
+    parts.push('<line x1="'+padL+'" y1="'+y(100)+'" x2="'+(W-padR)+'" y2="'+y(100)+'" stroke="#7566A0" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.55"/>');
+    parts.push('<text x="'+(W-padR)+'" y="'+(y(100)-5)+'" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#7566A0" text-anchor="end">100% = at min stock</text>');
+
+    series.forEach(function(s){
+      var segments = [];
+      var cur = [];
+      s.vals.forEach(function(v, i){
+        if(v===null){
+          if(cur.length>1) segments.push(cur);
+          cur = [];
+          return;
+        }
+        cur.push([i, v]);
+      });
+      if(cur.length>1) segments.push(cur);
+      segments.forEach(function(seg){
+        var d = seg.map(function(pt,i){ return (i===0?'M':'L')+x(pt[0]).toFixed(1)+','+y(pt[1]).toFixed(1); }).join(' ');
+        parts.push('<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>');
+      });
+    });
+
+    // x labels, sparse
+    var labelEvery = weeks.length > 20 ? 4 : weeks.length > 10 ? 2 : 1;
+    weeks.forEach(function(w,i){
+      if(i % labelEvery !== 0 && i !== weeks.length-1) return;
+      var d = new Date(w.date+"T00:00:00");
+      var lbl = d.toLocaleDateString('en-AU', {day:'numeric', month:'short'});
+      parts.push('<text x="'+x(i).toFixed(1)+'" y="'+(H-12)+'" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#9c9887" text-anchor="middle">'+lbl+'</text>');
+    });
+
+    // y labels
+    [0, 50, 100, 150, 200].forEach(function(v){
+      if(v > maxVal) return;
+      parts.push('<text x="'+(padL-6)+'" y="'+(y(v)+3).toFixed(1)+'" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#9c9887" text-anchor="end">'+v+'%</text>');
+    });
+
+    if(!series.length){
+      parts.push('<text x="'+padL+'" y="'+(H/2)+'" font-family="IBM Plex Mono, monospace" font-size="12" fill="#9c9887">All chemicals hidden — click a chip below to show one.</text>');
+    }
+
+    svg.innerHTML = parts.join('');
+  }
+
+  function miniSparkline(chem, weeks){
+    var W = 200, H = 34;
+    var vals = weeks.map(function(w){ return w.counts[chem.id]; }).filter(function(v){ return v!==null && v!==undefined; });
+    if(vals.length < 2) return '<svg viewBox="0 0 '+W+' '+H+'"></svg>';
+    var minV = Math.min.apply(null, vals.concat([chem.min]));
+    var maxV = Math.max.apply(null, vals.concat([chem.min]));
+    if(maxV === minV){ minV -= 1; maxV += 1; }
+    var pts = [];
+    weeks.forEach(function(w, i){
+      var v = w.counts[chem.id];
+      if(v===null||v===undefined) return;
+      var xx = weeks.length===1 ? 0 : (W-4) * (i/(weeks.length-1)) + 2;
+      var yy = H-4 - (H-8) * ((v-minV)/(maxV-minV));
+      pts.push([xx,yy]);
+    });
+    var d = pts.map(function(p,i){ return (i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ');
+    var last = pts[pts.length-1];
+    var status = statusFor(chem, vals[vals.length-1]);
+    var dotColor = status==='low' ? '#7566A0' : '#47D7AC';
+    return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
+      '<path d="'+d+'" fill="none" stroke="#B9CFC7" stroke-width="1.5"/>'+
+      '<circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="2.5" fill="'+dotColor+'"/>'+
+      '</svg>';
+  }
+
+  function renderMiniGrid(){
+    var grid = document.getElementById('miniGrid');
+    var weeks = dashboardWeeks().slice(-12);
+    if(weeks.length < 2){
+      grid.innerHTML = '<div class="empty-hist">Not enough data yet.</div>';
+      return;
+    }
+    grid.innerHTML = ACTIVE_CHEMICALS.map(function(chem){
+      var vals = weeks.map(function(w){ return w.counts[chem.id]; }).filter(function(v){ return v!==null && v!==undefined; });
+      var latest = vals.length ? vals[vals.length-1] : null;
+      var status = statusFor(chem, latest);
+      return '<div class="mini-card">'+
+        '<div class="mc-top"><span class="mc-name">'+esc(chem.name)+'</span><span class="status-pill '+status+'"><i></i></span></div>'+
+        miniSparkline(chem, weeks)+
+        '<div class="mc-bottom"><span class="mc-val">'+(latest===null?'—':fmtNum(latest)+' '+chem.unit)+'</span><span class="mc-val">min '+fmtNum(chem.min)+'</span></div>'+
+        '</div>';
+    }).join('');
+  }
+
+  /* ---------------- View routing (stocktake vs year dashboard) ---------------- */
+
+  function syncViewFromHash(){
+    var showDashboard = location.hash === '#dashboard';
+    document.querySelector('main').style.display = showDashboard ? 'none' : '';
+    document.getElementById('dashboardView').style.display = showDashboard ? 'block' : 'none';
+    if(showDashboard) renderDashboard();
+    window.scrollTo(0,0);
+  }
+  window.addEventListener('hashchange', syncViewFromHash);
+
+  /* ---------------- Render: history ---------------- */
+
+  function renderHistory(){
+    var tbody = document.getElementById('histTbody');
+    var rows = state.history.slice().reverse().slice(0, 20);
+    if(!rows.length){
+      tbody.innerHTML = '<tr><td colspan="4"><div class="empty-hist">No stocktakes recorded yet.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function(h){
+      var belowMin = 0, totalOrdered = 0;
+      ACTIVE_CHEMICALS.forEach(function(chem){
+        var count = h.counts[chem.id];
+        if(count===null||count===undefined) return;
+        if(count < chem.min) belowMin++;
+        var ord = h.orderPlaced ? h.orderPlaced[chem.id] : null;
+        if(ord) totalOrdered += ord;
+      });
+      return '<tr class="hist-row" data-date="'+esc(h.date)+'" title="Click to view or change this week\'s counts and orders">'+
+        '<td>'+fmtDateShort(h.date)+'</td>'+
+        '<td>'+esc(h.countedBy||'—')+'</td>'+
+        '<td>'+(belowMin>0 ? '<span class="flag">'+belowMin+'</span>' : '0')+'</td>'+
+        '<td>'+fmtNum(totalOrdered)+(h.estimatedOrders?' <span title="Estimated — order data not recorded historically" style="color:#9c9887;">(est.)</span>':'')+'</td>'+
+        '</tr>';
+    }).join('');
+    tbody.querySelectorAll('.hist-row').forEach(function(tr){
+      tr.addEventListener('click', function(){ openHistoryEdit(this.getAttribute('data-date')); });
+    });
+  }
+
+  /* ---------------- History edit modal ---------------- */
+
+  var editingEntry = null; // working copy of the history record currently open in the modal
+
+  function openHistoryEdit(date){
+    var h = state.history.filter(function(x){ return x.date === date; })[0];
+    if(!h) return;
+    editingEntry = {
+      date: h.date,
+      countedBy: h.countedBy || "",
+      counts: {},
+      orderPlaced: {},
+      notes: {}
+    };
+    ACTIVE_CHEMICALS.forEach(function(chem){
+      editingEntry.counts[chem.id] = (h.counts && h.counts[chem.id] !== undefined) ? h.counts[chem.id] : null;
+      editingEntry.orderPlaced[chem.id] = (h.orderPlaced && h.orderPlaced[chem.id] !== undefined) ? h.orderPlaced[chem.id] : null;
+      editingEntry.notes[chem.id] = (h.notes && h.notes[chem.id]) ? h.notes[chem.id] : "";
+    });
+    document.getElementById('histEditDateLabel').textContent =
+      'Week ending ' + fmtDateShort(h.date) + (h.countedBy ? (' — counted by ' + h.countedBy) : '');
+    renderHistEditRows();
+    document.getElementById('histEditOverlay').style.display = 'flex';
+  }
+
+  function closeHistoryEdit(){
+    editingEntry = null;
+    document.getElementById('histEditOverlay').style.display = 'none';
+  }
+
+  function renderHistEditRows(){
+    var tbody = document.getElementById('histEditTbody');
+    tbody.innerHTML = '';
+    SUPPLIER_ORDER.forEach(function(supplier){
+      var chems = ACTIVE_CHEMICALS.filter(function(c){ return c.supplier === supplier; });
+      if(!chems.length) return;
+      var groupRow = document.createElement('tr');
+      groupRow.className = 'group-row';
+      groupRow.innerHTML = '<td colspan="6">'+supplier+'</td>';
+      tbody.appendChild(groupRow);
+
+      chems.forEach(function(chem){
+        var count = editingEntry.counts[chem.id];
+        var order = editingEntry.orderPlaced[chem.id];
+        var note = editingEntry.notes[chem.id] || '';
+        var status = statusFor(chem, count);
+        var stepAttr = (chem.inputStep !== undefined) ? chem.inputStep : 0.01;
+        var orderUnit = chem.orderUnit || chem.unit;
+
+        var tr = document.createElement('tr');
+        tr.className = 'chem-row';
+        tr.innerHTML =
+          '<td><div class="chem-name">'+esc(chem.name)+'</div></td>'+
+          '<td>'+fmtNum(chem.min)+'</td>'+
+          '<td><input type="number" step="'+stepAttr+'" class="num-in" data-chem="'+chem.id+'" data-role="hcount" value="'+(count===null||count===undefined?'':count)+'"><span class="unit-lbl">'+esc(chem.unit)+'</span></td>'+
+          '<td><span class="status-pill '+status+'"><i></i>'+STATUS_LABEL[status]+'</span></td>'+
+          '<td><input type="number" step="0.01" class="num-in order-in" data-chem="'+chem.id+'" data-role="horder" value="'+(order===null||order===undefined?'':order)+'"><span class="unit-lbl">'+esc(orderUnit)+'</span></td>'+
+          '<td><input type="text" class="txt-in" data-chem="'+chem.id+'" data-role="hnote" value="'+esc(note)+'"></td>';
+        tbody.appendChild(tr);
+      });
+    });
+
+    tbody.querySelectorAll('input[data-role="hcount"]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = this.getAttribute('data-chem');
+        editingEntry.counts[id] = this.value === '' ? null : Number(this.value);
+        var chem = chemById(id);
+        var status = statusFor(chem, editingEntry.counts[id]);
+        var pill = this.closest('tr').querySelector('.status-pill');
+        pill.className = 'status-pill '+status;
+        pill.innerHTML = '<i></i>'+STATUS_LABEL[status];
+      });
+    });
+    tbody.querySelectorAll('input[data-role="horder"]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = this.getAttribute('data-chem');
+        editingEntry.orderPlaced[id] = this.value === '' ? null : Number(this.value);
+      });
+    });
+    tbody.querySelectorAll('input[data-role="hnote"]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = this.getAttribute('data-chem');
+        editingEntry.notes[id] = this.value;
+      });
+    });
+  }
+
+  function saveHistoryEdit(){
+    if(!editingEntry) return;
+    var idx = -1;
+    state.history.forEach(function(h, i){ if(h.date === editingEntry.date) idx = i; });
+    if(idx === -1) return;
+    state.history[idx] = {
+      date: editingEntry.date,
+      countedBy: editingEntry.countedBy,
+      counts: Object.assign({}, editingEntry.counts),
+      orderPlaced: Object.assign({}, editingEntry.orderPlaced),
+      notes: Object.assign({}, editingEntry.notes),
+      estimatedOrders: false // manually reviewed/edited, no longer just an estimate
+    };
+    markDirty();
+    closeHistoryEdit();
+    renderHistory();
+    renderTrend();
+    if(location.hash === '#dashboard') renderDashboard();
+  }
+
+  document.getElementById('histEditClose').addEventListener('click', closeHistoryEdit);
+  document.getElementById('histEditCancel').addEventListener('click', closeHistoryEdit);
+  document.getElementById('histEditSave').addEventListener('click', saveHistoryEdit);
+  document.getElementById('histEditOverlay').addEventListener('click', function(e){
+    if(e.target === this) closeHistoryEdit(); // clicking the dimmed background closes it
+  });
+
+  function renderLastSaved(){
+    var el = document.getElementById('lastSaved');
+    if(!state.updatedAt){ el.textContent = '—'; return; }
+    var d = new Date(state.updatedAt);
+    el.textContent = 'Saved ' + d.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  /* ---------------- Metabar bindings ---------------- */
+
+  document.getElementById('f-date').addEventListener('change', function(){
+    state.current.date = this.value;
+    markDirty();
+    renderPOGroups();
+    renderTrend();
+    renderHistory();
+  });
+  document.getElementById('f-countedby').addEventListener('input', function(){
+    state.current.countedBy = this.value;
+    markDirty();
+  });
+
+  /* ---------------- Header actions ---------------- */
+
+  document.getElementById('newWeekBtn').addEventListener('click', function(){
+    var hasAnyCount = ACTIVE_CHEMICALS.some(function(c){ return state.current.counts[c.id] !== null && state.current.counts[c.id] !== undefined; });
+    if(hasAnyCount){
+      var snapshot = {
+        date: state.current.date,
+        countedBy: state.current.countedBy,
+        counts: Object.assign({}, state.current.counts),
+        orderPlaced: {},
+        notes: Object.assign({}, state.current.notes),
+        estimatedOrders: false
+      };
+      ACTIVE_CHEMICALS.forEach(function(c){ snapshot.orderPlaced[c.id] = currentOrderQty(c); });
+      state.history = state.history.filter(function(h){ return h.date !== snapshot.date; });
+      state.history.push(snapshot);
+      state.history.sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    }
+    var nextDate = nextFriday(state.current.date);
+    state.current = emptyCurrent(nextDate);
+    markDirty();
+    renderAll();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', async function(){
+    var btn = this;
+    var label = document.getElementById('exportBtnLabel');
+    var original = label.textContent;
+    var lines = [];
+    lines.push('Chemical order summary — Balter Brewing');
+    lines.push('Week ending '+fmtDateShort(state.current.date)+(state.current.countedBy?(' — counted by '+state.current.countedBy):''));
+    lines.push('');
+    var any = false;
+    SUPPLIER_ORDER.forEach(function(supplier){
+      var text = poTextForSupplier(supplier);
+      if(text){ any = true; lines.push(text); lines.push(''); }
+    });
+    if(!any) lines.push('Nothing needs ordering this week — all chemicals at or above min stock.');
+    var text = lines.join('\n');
+    try{
+      await navigator.clipboard.writeText(text);
+      label.textContent = 'Copied ✓';
+    }catch(e){ label.textContent = 'Could not copy'; }
+    setTimeout(function(){ label.textContent = original; }, 2400);
+  });
+
+  document.getElementById('pdfBtn').addEventListener('click', function(){
+    buildPrintSheet();
+    window.print();
+  });
+
+  function buildPrintSheet(){
+    var sheet = document.getElementById('printSheet');
+    var rowsHtml = SUPPLIER_ORDER.map(function(supplier){
+      var chems = CHEMICALS.filter(function(c){ return c.supplier===supplier; });
+      var trs = chems.map(function(chem){
+        var isActive = chem.active !== false;
+        var count = isActive ? state.current.counts[chem.id] : null;
+        var order = isActive ? currentOrderQty(chem) : null;
+        return '<tr><td>'+esc(chem.name)+(isActive?'':' (discontinued)')+'</td><td>'+fmtNum(chem.min)+'</td><td>'+(count===null?'—':fmtNum(count))+'</td><td>'+(order&&order>0?fmtNum(order):'—')+'</td></tr>';
+      }).join('');
+      return '<section><h3>'+supplier+'</h3><table><thead><tr><th>Chemical</th><th>Min</th><th>On hand</th><th>Order</th></tr></thead><tbody>'+trs+'</tbody></table></section>';
+    }).join('');
+
+    sheet.innerHTML =
+      '<h1>Chemical Tracker — Balter Brewing</h1>'+
+      '<div class="ps-meta"><span>Week ending: '+fmtDateShort(state.current.date)+'</span><span>Counted by: '+esc(state.current.countedBy||'—')+'</span></div>'+
+      rowsHtml+
+      '<div class="ps-footer">Generated '+new Date().toLocaleString('en-AU')+'</div>';
+  }
+
+  /* ---------------- Utils ---------------- */
+
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  render();
+  initSync();
+  syncViewFromHash();
+
+})();
+</script>
+</body>
+</html>
