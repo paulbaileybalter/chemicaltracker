@@ -151,6 +151,8 @@ function loginPageHtml(errorMessage) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign in — Balter Brewing Chemical Tracker</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -322,6 +324,15 @@ export default {
           "Set-Cookie": `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
         },
       });
+    }
+
+    // --- A small set of public, non-sensitive static files (browser tab
+    // icon, home-screen icons, PWA manifest) are reachable without a
+    // session, so the tab icon shows on the login screen too, and so
+    // "Add to Home Screen" can fetch the manifest before signing in. ---
+    const PUBLIC_ASSET_PATHS = new Set(["/favicon.svg", "/icon-192.png", "/icon-512.png", "/manifest.json"]);
+    if (PUBLIC_ASSET_PATHS.has(path)) {
+      return env.ASSETS.fetch(request);
     }
 
     // --- Everything else requires a valid session ---

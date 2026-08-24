@@ -20,7 +20,7 @@ The 15 most recent stocktakes from the old spreadsheet's Dashboard tab are pre-l
 wrangler.jsonc       — Worker config (points at src/worker.js and public/)
 package.json         — just the wrangler dev dependency
 src/worker.js         — the entire server: auth gate + /api/sync proxy + static file fallback
-public/               — the actual site (index.html, manifest.json, icons)
+public/               — the actual site (index.html, manifest.json, favicon.svg, icons)
 ```
 
 ## One-time setup
