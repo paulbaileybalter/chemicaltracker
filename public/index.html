@@ -511,7 +511,7 @@
       Back to stocktake
     </a>
     <h2>Chemical stock — year dashboard</h2>
-    <div class="sub">All chemicals plotted together, shown as a % of each one's own minimum stock level — so 100% marks the reorder threshold for every chemical, whatever its units.</div>
+    <div class="sub">Most chemicals are shown as a % of their own minimum stock level, so 100% marks the reorder threshold. A few (dashed lines, "% full") are already tracked by percentage and are shown as their actual reading instead — dividing those by a low reorder point would blow the scale out even at a normal level.</div>
   </div>
 
   <section class="card" id="card-combined-chart">
@@ -1248,7 +1248,10 @@
     // Legend is always built from the full chemical list, regardless of chart data.
     legend.innerHTML = ACTIVE_CHEMICALS.map(function(chem, i){
       var off = dashHiddenIds[chem.id] ? ' off' : '';
-      return '<button class="dash-chip'+off+'" data-chem="'+chem.id+'"><span class="sw" style="background:'+chemColor(i)+'"></span>'+esc(chem.name)+'</button>';
+      var isRawPct = !!chem.fixedOrderQty;
+      var swStyle = 'background:'+chemColor(i)+(isRawPct ? ';background-image:repeating-linear-gradient(90deg, transparent 0 2px, #fff 2px 3px)' : '');
+      var label = esc(chem.name) + (isRawPct ? ' (% full)' : '');
+      return '<button class="dash-chip'+off+'" data-chem="'+chem.id+'" title="'+(isRawPct ? 'Shown as its actual % full, not relative to min' : '')+'"><span class="sw" style="'+swStyle+'"></span>'+label+'</button>';
     }).join('');
     legend.querySelectorAll('[data-chem]').forEach(function(btn){
       btn.addEventListener('click', function(){
@@ -1266,16 +1269,22 @@
     function x(i){ return padL + (W-padL-padR) * (weeks.length===1 ? 0 : i/(weeks.length-1)); }
 
     // Build normalized (% of min) series per visible chemical first, so the
-    // y-scale reflects only what's actually being shown.
+    // y-scale reflects only what's actually being shown. Chemicals already
+    // tracked as a raw % full (fixedOrderQty ones — Synergex 1000L, ACID700,
+    // ALKS500) are plotted as-is instead of divided by min: their reorder
+    // point is well below "full", so dividing by it would blow the scale out
+    // to 200–300%+ even at a perfectly normal, well-stocked reading.
     var series = [];
     ACTIVE_CHEMICALS.forEach(function(chem, i){
       if(dashHiddenIds[chem.id]) return;
+      var isRawPct = !!chem.fixedOrderQty;
       var vals = weeks.map(function(w){
         var c = w.counts[chem.id];
         if(c===null||c===undefined) return null;
+        if(isRawPct) return round2(c);
         return chem.min > 0 ? round2((c/chem.min)*100) : null;
       });
-      series.push({ chem:chem, color:chemColor(i), vals:vals });
+      series.push({ chem:chem, color:chemColor(i), vals:vals, isRawPct:isRawPct });
     });
 
     var allVals = [];
@@ -1286,9 +1295,10 @@
 
     var parts = [];
     parts.push('<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="#E7E5DE" stroke-width="1"/>');
-    // 100% reference line — the reorder threshold for every chemical on this normalized scale.
+    // 100% reference line — the reorder threshold for the solid "% of min" lines.
+    // Dashed lines (raw % full) have their own, lower reorder point instead.
     parts.push('<line x1="'+padL+'" y1="'+y(100)+'" x2="'+(W-padR)+'" y2="'+y(100)+'" stroke="#7566A0" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.55"/>');
-    parts.push('<text x="'+(W-padR)+'" y="'+(y(100)-5)+'" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#7566A0" text-anchor="end">100% = at min stock</text>');
+    parts.push('<text x="'+(W-padR)+'" y="'+(y(100)-5)+'" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#7566A0" text-anchor="end">100% = at min stock (solid lines)</text>');
 
     series.forEach(function(s){
       var segments = [];
@@ -1302,9 +1312,10 @@
         cur.push([i, v]);
       });
       if(cur.length>1) segments.push(cur);
+      var dash = s.isRawPct ? ' stroke-dasharray="5 3"' : '';
       segments.forEach(function(seg){
         var d = seg.map(function(pt,i){ return (i===0?'M':'L')+x(pt[0]).toFixed(1)+','+y(pt[1]).toFixed(1); }).join(' ');
-        parts.push('<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>');
+        parts.push('<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"'+dash+'/>');
       });
     });
 
