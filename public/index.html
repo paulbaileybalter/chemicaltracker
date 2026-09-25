@@ -291,6 +291,13 @@
   .back-link:hover{text-decoration:underline;}
   .dash-header h2{font-family:var(--font-display); font-size:22px; margin:0 0 6px; font-weight:700;}
   .dash-header .sub{font-size:13px; color:#7a776c; max-width:640px; line-height:1.5;}
+  .range-picker{display:flex; gap:6px; flex-wrap:wrap; margin-top:14px;}
+  .range-btn{
+    border:1.5px solid var(--line); background:#fff; color:#6b6858; font-family:var(--font-mono);
+    font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:999px; transition:.12s ease;
+  }
+  .range-btn:hover{border-color:var(--purple);}
+  .range-btn.active{background:var(--ink); color:#fff; border-color:var(--ink);}
   .dash-legend{display:flex; flex-wrap:wrap; gap:6px; margin-top:14px;}
   .dash-chip{
     display:inline-flex; align-items:center; gap:6px; border:1.5px solid var(--line); background:#fff;
@@ -512,6 +519,7 @@
     </a>
     <h2>Chemical stock — year dashboard</h2>
     <div class="sub">Most chemicals are shown as a % of their own minimum stock level, so 100% marks the reorder threshold. A few (dashed lines, "% full") are already tracked by percentage and are shown as their actual reading instead — dividing those by a low reorder point would blow the scale out even at a normal level.</div>
+    <div class="range-picker" id="dashRangePicker"></div>
   </div>
 
   <section class="card" id="card-combined-chart">
@@ -535,7 +543,7 @@
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#7566A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <div>
         <h2>Every chemical at a glance</h2>
-        <div class="sub">Recent weeks, actual stock levels.</div>
+        <div class="sub">Actual stock levels over the selected range.</div>
       </div>
     </div>
     <div class="body">
@@ -1224,6 +1232,44 @@
     return 'hsl('+hue+', 62%, 48%)';
   }
 
+  var DASH_RANGE_OPTIONS = [
+    { label:"8 weeks", weeks:8 },
+    { label:"12 weeks", weeks:12 },
+    { label:"26 weeks", weeks:26 },
+    { label:"52 weeks", weeks:52 },
+    { label:"All time", weeks:null }
+  ];
+  var DASH_RANGE_KEY = 'balter-chem-tracker-dash-range';
+  var dashRangeWeeks = (function(){
+    try{
+      var saved = localStorage.getItem(DASH_RANGE_KEY);
+      if(saved === 'all') return null;
+      if(saved !== null){ var n = Number(saved); if(!isNaN(n) && n > 0) return n; }
+    }catch(e){}
+    return 52; // default: roughly a year of weekly stocktakes
+  })();
+
+  function setDashRange(weeks){
+    dashRangeWeeks = weeks;
+    try{ localStorage.setItem(DASH_RANGE_KEY, weeks === null ? 'all' : String(weeks)); }catch(e){}
+    renderRangePicker();
+    renderDashboard();
+  }
+
+  function renderRangePicker(){
+    var el = document.getElementById('dashRangePicker');
+    el.innerHTML = DASH_RANGE_OPTIONS.map(function(opt){
+      var active = (opt.weeks === dashRangeWeeks) ? ' active' : '';
+      return '<button class="range-btn'+active+'" data-weeks="'+(opt.weeks===null?'all':opt.weeks)+'">'+opt.label+'</button>';
+    }).join('');
+    el.querySelectorAll('[data-weeks]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var w = this.getAttribute('data-weeks');
+        setDashRange(w === 'all' ? null : Number(w));
+      });
+    });
+  }
+
   function dashboardWeeks(){
     var weeks = state.history.map(function(h){ return { date:h.date, counts:h.counts }; });
     var hasCurrentCount = ACTIVE_CHEMICALS.some(function(c){
@@ -1231,10 +1277,11 @@
       return v !== null && v !== undefined && v !== "";
     });
     if(hasCurrentCount) weeks.push({ date: state.current.date, counts: state.current.counts });
-    return weeks.slice(-52); // roughly a year of weekly stocktakes
+    return dashRangeWeeks ? weeks.slice(-dashRangeWeeks) : weeks;
   }
 
   function renderDashboard(){
+    renderRangePicker();
     renderCombinedChart();
     renderMiniGrid();
   }
@@ -1368,7 +1415,7 @@
 
   function renderMiniGrid(){
     var grid = document.getElementById('miniGrid');
-    var weeks = dashboardWeeks().slice(-12);
+    var weeks = dashboardWeeks();
     if(weeks.length < 2){
       grid.innerHTML = '<div class="empty-hist">Not enough data yet.</div>';
       return;
