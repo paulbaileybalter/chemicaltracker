@@ -800,8 +800,41 @@
       if(!(chem.id in c.notes)) c.notes[chem.id] = "";
     });
     s.history.sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    migrateLegacyPercentChemicals(s);
     return s;
   }
+
+  // ACID700 and ALKS500 were originally tracked as a fractional container count
+  // (min 0.45 / 0.30) and were later switched to "% full" (min 45 / 30). Weeks
+  // saved before that switch are still sitting in the old 0–1-ish scale, which
+  // reads as ~0% once divided by the new min. Any history entry not yet
+  // stamped with dataVersion 2 gets checked once: a stored value of 5 or less
+  // for either chemical is unambiguously the old scale (a genuine "5% full"
+  // reading would never have existed under the old container-count system) and
+  // gets multiplied by 100; either way the entry is stamped so this never runs
+  // again and a real low percentage entered later is never misread.
+  var LEGACY_PCT_CHEM_IDS = ["acid700","alks500"];
+  function migrateLegacyPercentChemicals(s){
+    var changed = false;
+    s.history.forEach(function(h){
+      if(h.dataVersion === 2) return;
+      LEGACY_PCT_CHEM_IDS.forEach(function(id){
+        var chem = chemById(id);
+        var v = h.counts ? h.counts[id] : undefined;
+        if(typeof v === 'number' && v <= 5){
+          h.counts[id] = round2(v * 100);
+        }
+        if(h.orderPlaced && (id in h.orderPlaced)){
+          h.orderPlaced[id] = suggestedOrder(chem, h.counts[id]);
+        }
+      });
+      h.dataVersion = 2;
+      changed = true;
+    });
+    if(changed) legacyMigrationRan = true;
+    return changed;
+  }
+  var legacyMigrationRan = false;
 
   function markDirty(){
     dirty = true;
@@ -821,9 +854,11 @@
     try{
       var remote = await remoteGet();
       if(remote && remote.updatedAt && remote.updatedAt > (state.updatedAt||0)){
+        legacyMigrationRan = false;
         state = reconcileState(Object.assign(defaultState(), remote));
         saveLocal();
         renderAll();
+        if(legacyMigrationRan) markDirty();
       }
       setSyncStatus('live','Live — synced');
     }catch(e){ setSyncStatus('local','Offline — saved on this device'); }
@@ -840,10 +875,12 @@
           state = Object.assign(defaultState(), remote);
         }
       }
+      legacyMigrationRan = false;
       state = reconcileState(state);
       renderAll();
       saveLocal();
       setSyncStatus('live','Live — synced');
+      if(legacyMigrationRan) markDirty();
     }catch(e){ setSyncStatus('local','Offline — saved on this device'); }
 
     setInterval(pollRemote, 4000);
@@ -1476,7 +1513,8 @@
       counts: Object.assign({}, editingEntry.counts),
       orderPlaced: Object.assign({}, editingEntry.orderPlaced),
       notes: Object.assign({}, editingEntry.notes),
-      estimatedOrders: false // manually reviewed/edited, no longer just an estimate
+      estimatedOrders: false, // manually reviewed/edited, no longer just an estimate
+      dataVersion: 2
     };
     markDirty();
     closeHistoryEdit();
@@ -1524,7 +1562,8 @@
         counts: Object.assign({}, state.current.counts),
         orderPlaced: {},
         notes: Object.assign({}, state.current.notes),
-        estimatedOrders: false
+        estimatedOrders: false,
+        dataVersion: 2
       };
       ACTIVE_CHEMICALS.forEach(function(c){ snapshot.orderPlaced[c.id] = currentOrderQty(c); });
       state.history = state.history.filter(function(h){ return h.date !== snapshot.date; });
