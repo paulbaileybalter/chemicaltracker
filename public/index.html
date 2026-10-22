@@ -938,16 +938,9 @@
   function renderStockTable(){
     var tbody = document.getElementById('stockTbody');
     tbody.innerHTML = '';
-    var groups = SUPPLIER_ORDER;
-    groups.forEach(function(supplier){
-      var chems = CHEMICALS.filter(function(c){ return c.supplier === supplier; });
-      if(!chems.length) return;
-      var groupRow = document.createElement('tr');
-      groupRow.className = 'group-row';
-      groupRow.innerHTML = '<td colspan="7">'+supplier+'</td>';
-      tbody.appendChild(groupRow);
-
-      chems.forEach(function(chem){
+    // Flat list in CHEMICALS order (not grouped by supplier — only the
+    // Purchase Orders section is grouped by supplier).
+    CHEMICALS.forEach(function(chem){
         var isActive = chem.active !== false;
         var tr = document.createElement('tr');
         tr.className = 'chem-row' + (isActive ? '' : ' discontinued');
@@ -975,7 +968,6 @@
           '<td>'+(isActive ? '<input type="number" step="1" class="num-in order-in" data-chem="'+chem.id+'" data-role="order" value="'+(orderVal===null||orderVal===undefined?'':orderVal)+'"><span class="unit-lbl">'+esc(orderUnit)+'</span>' : '—')+'</td>'+
           '<td>'+(isActive ? '<input type="text" class="txt-in" data-chem="'+chem.id+'" data-role="note" placeholder="Reason for loss…" value="'+esc(noteVal)+'">' : '—')+'</td>';
         tbody.appendChild(tr);
-      });
     });
 
     tbody.querySelectorAll('input[data-role="count"]').forEach(function(inp){
@@ -1506,15 +1498,8 @@
   function renderHistEditRows(){
     var tbody = document.getElementById('histEditTbody');
     tbody.innerHTML = '';
-    SUPPLIER_ORDER.forEach(function(supplier){
-      var chems = ACTIVE_CHEMICALS.filter(function(c){ return c.supplier === supplier; });
-      if(!chems.length) return;
-      var groupRow = document.createElement('tr');
-      groupRow.className = 'group-row';
-      groupRow.innerHTML = '<td colspan="6">'+supplier+'</td>';
-      tbody.appendChild(groupRow);
-
-      chems.forEach(function(chem){
+    // Flat list in CHEMICALS order, matching the main stocktake table.
+    ACTIVE_CHEMICALS.forEach(function(chem){
         var count = editingEntry.counts[chem.id];
         var order = editingEntry.orderPlaced[chem.id];
         var note = editingEntry.notes[chem.id] || '';
@@ -1532,7 +1517,6 @@
           '<td><input type="number" step="1" class="num-in order-in" data-chem="'+chem.id+'" data-role="horder" value="'+(order===null||order===undefined?'':order)+'"><span class="unit-lbl">'+esc(orderUnit)+'</span></td>'+
           '<td><input type="text" class="txt-in" data-chem="'+chem.id+'" data-role="hnote" value="'+esc(note)+'"></td>';
         tbody.appendChild(tr);
-      });
     });
 
     tbody.querySelectorAll('input[data-role="hcount"]').forEach(function(inp){
@@ -1663,16 +1647,14 @@
 
   function buildPrintSheet(){
     var sheet = document.getElementById('printSheet');
-    var rowsHtml = SUPPLIER_ORDER.map(function(supplier){
-      var chems = CHEMICALS.filter(function(c){ return c.supplier===supplier; });
-      var trs = chems.map(function(chem){
-        var isActive = chem.active !== false;
-        var count = isActive ? state.current.counts[chem.id] : null;
-        var order = isActive ? currentOrderQty(chem) : null;
-        return '<tr><td>'+esc(chem.name)+(isActive?'':' (discontinued)')+'</td><td>'+fmtNum(chem.min)+'</td><td>'+(count===null?'—':fmtNum(count))+'</td><td>'+(order&&order>0?fmtNum(order):'—')+'</td></tr>';
-      }).join('');
-      return '<section><h3>'+supplier+'</h3><table><thead><tr><th>Chemical</th><th>Min</th><th>On hand</th><th>Order</th></tr></thead><tbody>'+trs+'</tbody></table></section>';
+    // Flat list in CHEMICALS order, matching the main stocktake table.
+    var trs = CHEMICALS.map(function(chem){
+      var isActive = chem.active !== false;
+      var count = isActive ? state.current.counts[chem.id] : null;
+      var order = isActive ? currentOrderQty(chem) : null;
+      return '<tr><td>'+esc(chem.name)+(isActive?'':' (discontinued)')+'</td><td>'+fmtNum(chem.min)+'</td><td>'+(count===null?'—':fmtNum(count))+'</td><td>'+(order&&order>0?fmtNum(order):'—')+'</td></tr>';
     }).join('');
+    var rowsHtml = '<section><table><thead><tr><th>Chemical</th><th>Min</th><th>On hand</th><th>Order</th></tr></thead><tbody>'+trs+'</tbody></table></section>';
 
     sheet.innerHTML =
       '<h1>Chemical Tracker — Balter Brewing</h1>'+
