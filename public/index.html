@@ -572,6 +572,7 @@
       <button class="btn ghost small" id="histEditClose" title="Close without saving">✕</button>
     </div>
     <div class="modal-sub-note">Changes here update this past week's record directly — handy if an order changes after the fact. This doesn't affect the current stocktake.</div>
+    <div class="field" style="padding:0 20px 14px;"><label>Counted by</label><input id="histEditCountedBy" placeholder="Name"></div>
     <div class="modal-body">
       <div class="table-wrap">
         <table class="stock" id="histEditTable">
@@ -726,10 +727,12 @@
     return d.toLocaleDateString('en-AU', {day:'numeric', month:'short', year:'numeric'});
   }
 
+  var DEFAULT_COUNTED_BY = "Paul Bailey";
+
   function emptyCurrent(date){
     var counts={}, orderOverride={}, notes={};
     ACTIVE_CHEMICALS.forEach(function(c){ counts[c.id]=null; orderOverride[c.id]=null; notes[c.id]=""; });
-    return { date:date, countedBy:"", counts:counts, orderOverride:orderOverride, notes:notes };
+    return { date:date, countedBy:DEFAULT_COUNTED_BY, counts:counts, orderOverride:orderOverride, notes:notes };
   }
 
   function defaultState(){
@@ -1492,8 +1495,8 @@
       editingEntry.orderPlaced[chem.id] = (h.orderPlaced && h.orderPlaced[chem.id] !== undefined) ? h.orderPlaced[chem.id] : null;
       editingEntry.notes[chem.id] = (h.notes && h.notes[chem.id]) ? h.notes[chem.id] : "";
     });
-    document.getElementById('histEditDateLabel').textContent =
-      'Week ending ' + fmtDateShort(h.date) + (h.countedBy ? (' — counted by ' + h.countedBy) : '');
+    document.getElementById('histEditDateLabel').textContent = 'Week ending ' + fmtDateShort(h.date);
+    document.getElementById('histEditCountedBy').value = editingEntry.countedBy;
     renderHistEditRows();
     document.getElementById('histEditOverlay').style.display = 'flex';
   }
@@ -1576,6 +1579,9 @@
   document.getElementById('histEditClose').addEventListener('click', closeHistoryEdit);
   document.getElementById('histEditCancel').addEventListener('click', closeHistoryEdit);
   document.getElementById('histEditSave').addEventListener('click', saveHistoryEdit);
+  document.getElementById('histEditCountedBy').addEventListener('input', function(){
+    if(editingEntry) editingEntry.countedBy = this.value;
+  });
   document.getElementById('histEditOverlay').addEventListener('click', function(e){
     if(e.target === this) closeHistoryEdit(); // clicking the dimmed background closes it
   });
