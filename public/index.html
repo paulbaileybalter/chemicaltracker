@@ -45,6 +45,14 @@
     color:var(--ink);
     font-family:var(--font-body);
   }
+  body::before{
+    content:''; position:fixed; top:0; left:0; right:0; height:4px; z-index:1000;
+    background:linear-gradient(90deg,
+      var(--teal) 0 25%,
+      var(--orange) 25% 50%,
+      var(--purple) 50% 75%,
+      var(--sky) 75% 100%);
+  }
   ::selection{background:var(--teal); color:#fff;}
   button{font-family:inherit; cursor:pointer;}
   textarea, input, select{font-family:inherit;}
@@ -66,7 +74,7 @@
   @media (prefers-reduced-motion: reduce){ .bubbles{display:none;} }
 
   /* ---------- Page wrapper ---------- */
-  .page{position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:0 22px 60px;}
+  .page{position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:4px 22px 60px;}
 
   /* ---------- Header ---------- */
   header{
