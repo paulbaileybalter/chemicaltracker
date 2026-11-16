@@ -757,8 +757,8 @@
 
   /* ---------------- Sync ----------------
      Multi-device sync goes through the same-origin /api/sync endpoint,
-     which the Cloudflare Worker proxies to JSONBin.io server-side — the
-     browser never sees the JSONBin Bin ID or API key. Everyone signed in
+     which the Cloudflare Worker reads/writes straight to a Cloudflare KV
+     namespace — no external service, nothing to leak. Everyone signed in
      shares the one tracker, the same as the sibling handover sites. */
   var CACHE_KEY = 'balter-chem-tracker-cache';
 

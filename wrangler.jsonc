@@ -12,6 +12,16 @@
     // files) so the session-cookie check always runs before anything is served.
     "run_worker_first": true
   },
+  "kv_namespaces": [
+    {
+      // No "id" on purpose — Wrangler 4.45+ auto-creates and links this KV
+      // namespace on the first `wrangler deploy` (needs --no-x-provision to
+      // disable). If you're on an older Wrangler, run
+      // `npx wrangler kv namespace create CHEM_KV` yourself and add the
+      // printed id here instead.
+      "binding": "CHEM_KV"
+    }
+  ],
   "observability": {
     "logs": {
       "enabled": true

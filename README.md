@@ -1,6 +1,6 @@
 # Balter Brewing — Chemical Tracker
 
-A password-protected weekly chemical stocktake tool, replacing the old `Chemical_Tracker.xlsx`. Enter Friday morning's stock count and it works out what to order, groups it by supplier so you can raise a PO, and charts usage over time. Built the same way as the other Balter sites (13:30 Handover, Daily Packaging Handover, Logistics Daily Handover): a static site behind a Cloudflare Worker login gate, with multi-device sync proxied server-side through JSONBin.io so no secret ever reaches the browser.
+A password-protected weekly chemical stocktake tool, replacing the old `Chemical_Tracker.xlsx`. Enter Friday morning's stock count and it works out what to order, groups it by supplier so you can raise a PO, and charts usage over time. Built the same way as the other Balter sites (13:30 Handover, Daily Packaging Handover, Logistics Daily Handover): a static site behind a Cloudflare Worker login gate, with multi-device sync stored server-side in a Cloudflare KV namespace — everything stays inside Cloudflare's own network, nothing is sent to a third-party service.
 
 ## What it does
 
@@ -25,37 +25,32 @@ public/               — the actual site (index.html, manifest.json, favicon.sv
 
 ## One-time setup
 
-### 1. Create a JSONBin.io bin
+### 1. The KV namespace sets itself up
 
-1. Sign up at [jsonbin.io](https://jsonbin.io) (free tier is plenty for this).
-2. Get your **Master Key** (X-Master-Key) from the API Keys page.
-3. Create a new bin with an empty JSON object as its content, e.g. `{}`. Copy its **Bin ID** from the URL or dashboard.
+`wrangler.jsonc` already declares a `CHEM_KV` binding with no `id` — on your first `npx wrangler deploy` (Wrangler 4.45 or later; the build log you've seen use 4.163.0, so you're covered), Wrangler creates the namespace in your Cloudflare account automatically and links it to the Worker. Nothing to run by hand. This namespace is where the weekly stocktake data actually lives — there's no external service involved at all.
+
+If you're ever on an older Wrangler and this doesn't happen automatically, run `npx wrangler kv namespace create CHEM_KV` yourself and paste the printed `id` into the `kv_namespaces` block in `wrangler.jsonc`.
 
 ### 2. Push this repo to GitHub
 
 Create a new GitHub repo and push these files to it (a private repo is recommended, though nothing sensitive lives in the code itself since secrets are set separately in Cloudflare).
 
-### 3. Connect it to Cloudflare via Workers Builds (Git integration)
+### 3. Connect it to Cloudflare via Workers Builds (Git integration) — or just deploy locally
 
-Drag-and-drop won't work here since a Worker script has to actually run — this needs the Git-connected deploy path:
+Either connect the repo via **Workers & Pages → Create → Workers Builds**, or skip Git entirely and run `npx wrangler deploy` from your own machine once the KV namespace ID is in `wrangler.jsonc`. Local `wrangler deploy` has been the more reliable path for this project — see "If something's not working" below.
 
-1. In the Cloudflare dashboard: **Workers & Pages → Create → Workers Builds** (or **Connect to Git** if prompted from the Workers overview).
-2. Pick the GitHub repo you just created.
-3. Build settings: no build command needed — Wrangler picks up `wrangler.jsonc` automatically. Leave the root directory as `/`.
-4. Deploy. The first deploy will fail health checks until secrets are set (next step) — that's expected.
+### 4. Set the two secrets
 
-### 4. Set the four secrets
-
-In the Worker's **Settings → Variables and Secrets**, add these four as type **Secret** (not Text):
+In the Worker's **Settings → Variables and Secrets**, add these as type **Secret** (not Text):
 
 | Name | Value |
 |---|---|
 | `SITE_PASSWORD` | The shared password your team will type in to get past the login screen |
-| `SESSION_SECRET` | A long random string (e.g. generate one with `openssl rand -base64 32`) — used to sign session cookies. Don't reuse this across the sibling sites. |
-| `JSONBIN_BIN_ID` | The Bin ID from step 1 |
-| `JSONBIN_API_KEY` | The X-Master-Key from step 1 |
+| `SESSION_SECRET` | A long random string (e.g. generate one with `openssl rand -base64 32`) — used to sign session cookies. Don't reuse this across the sibling sites, and never leave it empty. |
 
-After saving secrets, redeploy (or it may auto-redeploy) and the site should come up behind the login screen.
+The KV namespace itself is a **binding**, configured in `wrangler.jsonc` (step 1), not a secret — there's nothing to add for it here.
+
+After saving secrets, redeploy (`npx wrangler deploy`) and the site should come up behind the login screen.
 
 ## Local development
 
@@ -80,7 +75,7 @@ npm run dev
 
 ## If something's not syncing
 
-- Check the Worker's logs in the Cloudflare dashboard (Observability is enabled in `wrangler.jsonc`) — a 502 from `/api/sync` usually means the JSONBin Bin ID or API key secret is wrong.
+- Check the Worker's logs in the Cloudflare dashboard (Observability is enabled in `wrangler.jsonc`). An exception on `/api/sync` with no useful detail usually means the `CHEM_KV` binding didn't get created/linked — confirm a KV namespace actually exists for this Worker under **Workers & Pages → chemicaltracker → Settings → Bindings**, and that the last deploy ran `npx wrangler deploy` (dashboard-triggered redeploys have previously broken binding setup for this project).
 - The site still falls back to saving locally on that device if `/api/sync` is unreachable, so nobody loses their in-progress count even if sync is temporarily down.
 
 ## Updating the chemical list
